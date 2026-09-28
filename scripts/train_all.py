@@ -10,6 +10,7 @@ on a schedule - see scripts/predict_week.py for the actual weekly job.
 """
 import json
 import sys
+import time
 from pathlib import Path
 
 import joblib
@@ -74,6 +75,7 @@ def train_ticker(ticker: str) -> dict:
             "n_train_examples": len(prepared["train"]),
             "final_train_loss": train_losses[-1],
             "final_val_loss": val_losses[-1],
+            "trained_at": time.strftime("%Y-%m-%d"),
         },
     }
 

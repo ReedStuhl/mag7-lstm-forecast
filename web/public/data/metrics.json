@@ -17,7 +17,8 @@
     "n_test_examples": 34,
     "n_train_examples": 150,
     "final_train_loss": 0.00980699984356761,
-    "final_val_loss": 0.03620802114407221
+    "final_val_loss": 0.03620802114407221,
+    "trained_at": "2026-09-24"
   },
   "MSFT": {
     "model_rmse_by_day": [
@@ -37,7 +38,8 @@
     "n_test_examples": 34,
     "n_train_examples": 150,
     "final_train_loss": 0.008242196775972844,
-    "final_val_loss": 0.05081820938115319
+    "final_val_loss": 0.05081820938115319,
+    "trained_at": "2026-09-24"
   },
   "GOOGL": {
     "model_rmse_by_day": [
@@ -57,7 +59,8 @@
     "n_test_examples": 34,
     "n_train_examples": 150,
     "final_train_loss": 0.005533114820718765,
-    "final_val_loss": 0.0169828071569403
+    "final_val_loss": 0.0169828071569403,
+    "trained_at": "2026-09-24"
   },
   "AMZN": {
     "model_rmse_by_day": [
@@ -77,7 +80,8 @@
     "n_test_examples": 34,
     "n_train_examples": 150,
     "final_train_loss": 0.016084044892340898,
-    "final_val_loss": 0.083278002217412
+    "final_val_loss": 0.083278002217412,
+    "trained_at": "2026-09-24"
   },
   "NVDA": {
     "model_rmse_by_day": [
@@ -97,7 +101,8 @@
     "n_test_examples": 34,
     "n_train_examples": 150,
     "final_train_loss": 0.01269911453127861,
-    "final_val_loss": 0.015056953144570192
+    "final_val_loss": 0.015056953144570192,
+    "trained_at": "2026-09-24"
   },
   "META": {
     "model_rmse_by_day": [
@@ -117,7 +122,8 @@
     "n_test_examples": 34,
     "n_train_examples": 150,
     "final_train_loss": 0.008813528693281114,
-    "final_val_loss": 0.013478684549530348
+    "final_val_loss": 0.013478684549530348,
+    "trained_at": "2026-09-24"
   },
   "TSLA": {
     "model_rmse_by_day": [
@@ -137,6 +143,7 @@
     "n_test_examples": 34,
     "n_train_examples": 150,
     "final_train_loss": 0.02270660251379013,
-    "final_val_loss": 0.09210619485626619
+    "final_val_loss": 0.09210619485626619,
+    "trained_at": "2026-09-24"
   }
 }

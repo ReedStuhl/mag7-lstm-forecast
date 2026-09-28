@@ -32,14 +32,9 @@
           :stroke-width="s.width ?? 2"
           :stroke-dasharray="s.dashed ? '5,4' : undefined"
         />
-        <circle
-          v-for="(v, i) in s.values"
-          :key="i"
-          :cx="xFor(i)"
-          :cy="yFor(v)"
-          r="3"
-          :fill="s.color"
-        />
+        <template v-for="(v, i) in s.values" :key="i">
+          <circle v-if="v != null" :cx="xFor(i)" :cy="yFor(v)" r="3" :fill="s.color" />
+        </template>
       </g>
 
       <!-- x labels -->
@@ -72,7 +67,7 @@ import { computed } from 'vue'
 
 export interface Series {
   name: string
-  values: number[]
+  values: (number | null)[]
   color: string
   dashed?: boolean
   width?: number
@@ -88,7 +83,9 @@ const width = 480
 const height = 220
 const padding = { top: 16, right: 16, bottom: 24, left: 48 }
 
-const allValues = computed(() => props.series.flatMap((s) => s.values))
+const allValues = computed(() =>
+  props.series.flatMap((s) => s.values).filter((v): v is number => v != null),
+)
 const minV = computed(() => Math.min(...allValues.value))
 const maxV = computed(() => Math.max(...allValues.value))
 const range = computed(() => Math.max(maxV.value - minV.value, 0.01))
@@ -105,8 +102,11 @@ function yFor(v: number): number {
   return height - padding.bottom - t * usable
 }
 
-function pointsFor(values: number[]): string {
-  return values.map((v, i) => `${xFor(i)},${yFor(v)}`).join(' ')
+function pointsFor(values: (number | null)[]): string {
+  return values
+    .map((v, i) => (v == null ? null : `${xFor(i)},${yFor(v)}`))
+    .filter((p): p is string => p != null)
+    .join(' ')
 }
 
 const gridLines = computed(() => {

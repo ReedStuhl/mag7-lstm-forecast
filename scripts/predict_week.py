@@ -87,12 +87,28 @@ def predict_ticker(ticker: str) -> dict:
     last_close = float(df["Close"].iloc[friday_idx])
     target_dates = next_trading_days(last_date, HORIZON)
 
+    # The week that just completed (real, known outcomes) - same 5 rows the
+    # model's input window ends on, so the frontend can chart "what actually
+    # happened" leading straight into "what's predicted next" on one
+    # continuous timeline, using data already fetched above (no extra cost).
+    recent_dates = [str(d.date()) for d in df.index[friday_idx - 4:friday_idx + 1]]
+    recent_actual = df["Close"].iloc[friday_idx - 4:friday_idx + 1].tolist()
+
+    # Naive "no change" baseline for the predicted week, same definition
+    # used in the historical backtest (src/evaluate.py) - lets the forecast
+    # chart show the model against that baseline for the *upcoming* week
+    # too, not just historically.
+    naive = [last_close] * HORIZON
+
     return {
         "ticker": ticker,
         "as_of_date": str(last_date.date()),
         "last_close": last_close,
+        "recent_dates": recent_dates,
+        "recent_actual": recent_actual,
         "target_dates": target_dates,
         "predicted": pred.tolist(),
+        "naive": naive,
     }
 
 

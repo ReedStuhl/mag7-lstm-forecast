@@ -5,8 +5,11 @@ export interface WeekPrediction {
   ticker: Ticker
   as_of_date: string
   last_close: number
+  recent_dates: string[]
+  recent_actual: number[]
   target_dates: string[]
   predicted: number[]
+  naive: number[]
 }
 
 export interface BacktestRow {
@@ -24,6 +27,7 @@ export interface TickerMetrics {
   n_train_examples: number
   final_train_loss: number
   final_val_loss: number
+  trained_at: string
 }
 
 export interface Sp500Stat {
