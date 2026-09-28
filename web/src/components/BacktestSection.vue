@@ -78,10 +78,19 @@ const verdict = computed(() => {
   return `The model beat the naive baseline on ${n} of 5 days in this backtest.`
 })
 
-// The most recent test-set example. It's dated and clearly framed as "one
-// example from the backtest" (not "current") since the section header
-// already sets the "as of last training run" context above.
-const exampleRow = computed(() => props.backtest.at(-1))
+// Test-set windows are anchored on every trading day (not just Fridays) -
+// that's intentional, restricting to Friday-only anchors would cut the
+// training/test set to roughly a fifth its size. But for display, pick the
+// most recent one that happens to start on a Monday so the example reads
+// as a clean Mon-Fri week, matching how predictions are framed everywhere
+// else on the page, instead of picking whichever row is last regardless of
+// what day it starts on.
+const exampleRow = computed(() => {
+  const mondayStart = [...props.backtest]
+    .reverse()
+    .find((row) => new Date(row.target_dates[0] + 'T00:00:00').getDay() === 1)
+  return mondayStart ?? props.backtest.at(-1)
+})
 
 function dayLabels(dates: string[]): string[] {
   return dates.map((d) => new Date(d + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' }))
