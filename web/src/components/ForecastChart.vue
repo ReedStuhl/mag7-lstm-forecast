@@ -1,14 +1,14 @@
 <template>
   <div class="border border-gray-200 rounded-xl p-5">
     <div class="flex items-baseline justify-between mb-1">
-      <h3 class="text-lg font-semibold">{{ prediction.ticker }} - last week vs. next week</h3>
+      <h3 class="text-lg font-semibold">{{ prediction.ticker }} - last week vs. {{ targetWeekLabel }}</h3>
       <span class="text-xs text-gray-500">as of {{ prediction.as_of_date }}</span>
     </div>
     <p class="text-sm text-gray-500 mb-4">
       Left half is what actually happened ({{ prediction.recent_dates[0] }} -
       {{ prediction.recent_dates.at(-1) }}). Right half is the forecast for
-      {{ prediction.target_dates[0] }} - {{ prediction.target_dates.at(-1) }}, shown against a
-      naive "no change" baseline.
+      {{ prediction.target_dates[0] }} - {{ prediction.target_dates.at(-1) }} ({{ targetWeekLabel }}),
+      shown against a naive "no change" baseline.
     </p>
     <LineChart :series="chartSeries" :labels="chartLabels" :aria-label="ariaLabel" />
   </div>
@@ -20,6 +20,19 @@ import LineChart, { type Series } from './LineChart.vue'
 import type { WeekPrediction } from '../types'
 
 const props = defineProps<{ prediction: WeekPrediction }>()
+
+// The forecasted week is "next week" only in the narrow window between the
+// Sunday refresh and the following Monday - once that Monday arrives it's
+// "this week" from the viewer's actual current date, even though the data
+// itself didn't change. Computed against real time so it's correct no
+// matter when someone loads the page, not hardcoded to how it looks right
+// after a refresh.
+const targetWeekLabel = computed(() => {
+  const targetMonday = new Date(props.prediction.target_dates[0] + 'T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today >= targetMonday ? 'this week' : 'next week'
+})
 
 function shortDate(d: string): string {
   const [, m, day] = d.split('-')
@@ -61,6 +74,6 @@ const chartSeries = computed<Series[]>(() => {
 
 const ariaLabel = computed(
   () =>
-    `Actual closing prices for ${props.prediction.ticker} last week, followed by predicted and naive-baseline prices for next week`,
+    `Actual closing prices for ${props.prediction.ticker} last week, followed by predicted and naive-baseline prices for ${targetWeekLabel.value}`,
 )
 </script>
