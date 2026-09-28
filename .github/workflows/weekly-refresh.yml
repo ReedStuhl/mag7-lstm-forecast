@@ -1,0 +1,49 @@
+name: Weekly prediction refresh
+
+# Runs the "predict Mon-Fri" job and refreshes the Mag 7 / S&P 500 stat on
+# a schedule, using the already-trained models (no retraining here - see
+# scripts/train_all.py for that, which is a manual/occasional step).
+# Committing the refreshed JSON to main triggers a redeploy on any static
+# host wired up via Git integration (e.g. Vercel), at no extra cost.
+
+on:
+  schedule:
+    # Sunday 14:00 UTC (after Friday's close is fully settled, before Monday's open)
+    - cron: "0 14 * * 0"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Predict next week
+        run: python -m scripts.predict_week
+
+      - name: Refresh S&P 500 concentration stat
+        run: python -m scripts.sp500_stat
+
+      - name: Sync data into frontend
+        run: |
+          mkdir -p web/public/data
+          cp data/output/predictions.json web/public/data/predictions.json
+          cp data/output/sp500_stat.json web/public/data/sp500_stat.json
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/output web/public/data
+          git diff --cached --quiet || git commit -m "Weekly data refresh"
+          git push
