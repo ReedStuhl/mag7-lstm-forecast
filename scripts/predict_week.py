@@ -53,6 +53,24 @@ def most_recent_friday_index(dates) -> int:
     raise ValueError("No Friday found in the fetched date range")
 
 
+def infer(model, scalers, features_scaled, anchor_idx: int) -> list[float]:
+    """Run the model as if 'now' were the close at anchor_idx, predicting the
+    5 trading days after it. Used both for the live forecast (anchor = most
+    recent Friday) and, retroactively, for what the model would have said
+    the week before (anchor = the Friday before that) - same function
+    either way, just a different anchor."""
+    end = anchor_idx + 1  # slice end is exclusive; include the anchor day itself
+    x_long = features_scaled[end - LONG_WINDOW:end]
+    x_short = features_scaled[end - SHORT_WINDOW:end]
+
+    xs = torch.tensor(x_short, dtype=torch.float32).unsqueeze(0).to(device)
+    xl = torch.tensor(x_long, dtype=torch.float32).unsqueeze(0).to(device)
+
+    with torch.no_grad():
+        pred_scaled = model(xs, xl).cpu().numpy()[0]
+    return scalers.target.inverse_transform(pred_scaled.reshape(-1, 1)).ravel().tolist()
+
+
 def predict_ticker(ticker: str) -> dict:
     ticker_dir = MODELS_DIR / ticker
     scalers = joblib.load(ticker_dir / "scalers.pkl")
@@ -72,16 +90,7 @@ def predict_ticker(ticker: str) -> dict:
     raw_features = df[["Close", "log_return"]].to_numpy()
     features_scaled = scalers.feature.transform(raw_features)
 
-    end = friday_idx + 1  # slice end is exclusive; include the Friday itself
-    x_long = features_scaled[end - LONG_WINDOW:end]
-    x_short = features_scaled[end - SHORT_WINDOW:end]
-
-    xs = torch.tensor(x_short, dtype=torch.float32).unsqueeze(0).to(device)
-    xl = torch.tensor(x_long, dtype=torch.float32).unsqueeze(0).to(device)
-
-    with torch.no_grad():
-        pred_scaled = model(xs, xl).cpu().numpy()[0]
-    pred = scalers.target.inverse_transform(pred_scaled.reshape(-1, 1)).ravel()
+    pred = infer(model, scalers, features_scaled, friday_idx)
 
     last_date = df.index[friday_idx]
     last_close = float(df["Close"].iloc[friday_idx])
@@ -100,14 +109,31 @@ def predict_ticker(ticker: str) -> dict:
     # too, not just historically.
     naive = [last_close] * HORIZON
 
+    # What the model (and naive baseline) would have said for LAST week,
+    # computed retroactively using the window that existed before it
+    # started - not stored/replayed from a prior run, just re-inferred now
+    # with the same already-trained weights. Lets the chart's "Predicted"
+    # and "Naive" lines run continuously across all 10 days instead of only
+    # covering the forecasted half.
+    prev_friday_idx = most_recent_friday_index(df.index[:friday_idx])
+    if prev_friday_idx + 1 < LONG_WINDOW:
+        raise ValueError(
+            f"{ticker}: not enough data before the prior Friday to retroactively "
+            f"infer last week's prediction ({prev_friday_idx + 1} rows, need {LONG_WINDOW})"
+        )
+    recent_predicted = infer(model, scalers, features_scaled, prev_friday_idx)
+    recent_naive = [float(df["Close"].iloc[prev_friday_idx])] * HORIZON
+
     return {
         "ticker": ticker,
         "as_of_date": str(last_date.date()),
         "last_close": last_close,
         "recent_dates": recent_dates,
         "recent_actual": recent_actual,
+        "recent_predicted": recent_predicted,
+        "recent_naive": recent_naive,
         "target_dates": target_dates,
-        "predicted": pred.tolist(),
+        "predicted": pred,
         "naive": naive,
     }
 

@@ -7,6 +7,8 @@ export interface WeekPrediction {
   last_close: number
   recent_dates: string[]
   recent_actual: number[]
+  recent_predicted: number[]
+  recent_naive: number[]
   target_dates: string[]
   predicted: number[]
   naive: number[]

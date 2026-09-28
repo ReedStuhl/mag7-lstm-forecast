@@ -5,11 +5,11 @@
       <span class="text-xs text-gray-500">as of {{ prediction.as_of_date }}</span>
     </div>
     <p class="text-sm text-gray-500 mb-4">
-      Left half is what actually happened ({{ longDate(prediction.recent_dates[0]) }} -
-      {{ longDate(prediction.recent_dates.at(-1)!) }}). Right half is the forecast for
-      {{ targetWeekLabel }} ({{ longDate(prediction.target_dates[0]) }} -
-      {{ longDate(prediction.target_dates.at(-1)!) }}), shown against a naive "no change"
-      baseline.
+      Left half ({{ longDate(prediction.recent_dates[0]) }} -
+      {{ longDate(prediction.recent_dates.at(-1)!) }}): what actually happened, next to what the
+      model and the naive baseline predicted for that week beforehand. Right half
+      ({{ longDate(prediction.target_dates[0]) }} - {{ longDate(prediction.target_dates.at(-1)!) }}):
+      the forecast for {{ targetWeekLabel }} - outcome not known yet.
     </p>
     <LineChart :series="chartSeries" :labels="chartLabels" :aria-label="ariaLabel" />
   </div>
@@ -53,28 +53,30 @@ const chartLabels = computed(() => [
   ...props.prediction.target_dates.map(shortDate),
 ])
 
-// Predicted/naive include the last actual close as their first point so the
-// lines visually connect to where "actual" leaves off, instead of floating
-// as a disconnected segment. That connector point is real data (the known
-// last close), not a prediction.
+// Predicted and Naive run continuously across all 10 days: recent_predicted
+// / recent_naive are what the model and the naive baseline would actually
+// have said for last week, re-inferred retroactively from the window that
+// existed before it started (see predict_week.py's infer()) - not a
+// fabricated connector, a real second inference pass. Actual only exists
+// for the 5 days that already happened, so it stops there.
 const chartSeries = computed<Series[]>(() => {
-  const gapFirst5: null[] = [null, null, null, null, null]
   const p = props.prediction
+  const gapForFuture: null[] = [null, null, null, null, null]
 
   return [
     {
       name: 'Actual',
-      values: [...p.recent_actual, ...gapFirst5],
+      values: [...p.recent_actual, ...gapForFuture],
       color: '#16a34a',
     },
     {
       name: 'Predicted',
-      values: [...gapFirst5.slice(1), p.last_close, ...p.predicted],
+      values: [...p.recent_predicted, ...p.predicted],
       color: '#2563eb',
     },
     {
       name: 'Naive baseline',
-      values: [...gapFirst5.slice(1), p.last_close, ...p.naive],
+      values: [...p.recent_naive, ...p.naive],
       color: '#9ca3af',
       dashed: true,
     },
