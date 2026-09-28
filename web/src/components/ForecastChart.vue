@@ -5,10 +5,11 @@
       <span class="text-xs text-gray-500">as of {{ prediction.as_of_date }}</span>
     </div>
     <p class="text-sm text-gray-500 mb-4">
-      Left half is what actually happened ({{ prediction.recent_dates[0] }} -
-      {{ prediction.recent_dates.at(-1) }}). Right half is the forecast for
-      {{ prediction.target_dates[0] }} - {{ prediction.target_dates.at(-1) }} ({{ targetWeekLabel }}),
-      shown against a naive "no change" baseline.
+      Left half is what actually happened ({{ longDate(prediction.recent_dates[0]) }} -
+      {{ longDate(prediction.recent_dates.at(-1)!) }}). Right half is the forecast for
+      {{ targetWeekLabel }} ({{ longDate(prediction.target_dates[0]) }} -
+      {{ longDate(prediction.target_dates.at(-1)!) }}), shown against a naive "no change"
+      baseline.
     </p>
     <LineChart :series="chartSeries" :labels="chartLabels" :aria-label="ariaLabel" />
   </div>
@@ -37,6 +38,14 @@ const targetWeekLabel = computed(() => {
 function shortDate(d: string): string {
   const [, m, day] = d.split('-')
   return `${Number(m)}/${Number(day)}`
+}
+
+// m/d/yy for the descriptive paragraph, e.g. "9/21/26" - distinct from the
+// chart's own axis labels (shortDate), which stay bare m/d since the year
+// is already given by "as of" above the chart.
+function longDate(d: string): string {
+  const [y, m, day] = d.split('-')
+  return `${Number(m)}/${Number(day)}/${y.slice(2)}`
 }
 
 const chartLabels = computed(() => [
