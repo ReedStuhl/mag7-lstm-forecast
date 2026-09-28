@@ -14,8 +14,6 @@ from datetime import timedelta
 from pathlib import Path
 
 import joblib
-import numpy as np
-import pandas as pd
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -40,6 +38,21 @@ def next_trading_days(start_date, n: int) -> list[str]:
     return days
 
 
+def most_recent_friday_index(dates) -> int:
+    """Index of the most recent Friday at or before the last fetched date.
+
+    Predictions are always anchored to a Friday close so the 5-day output
+    is always a clean upcoming Mon-Fri block - not just "whatever 5 trading
+    days happen to follow the last row fetched," which floats depending on
+    what day this script happens to run (e.g. a Thursday anchor produces
+    Fri, then next Mon-Thu - a real bug this replaces, not a style choice).
+    """
+    for i in range(len(dates) - 1, -1, -1):
+        if dates[i].weekday() == 4:  # Friday
+            return i
+    raise ValueError("No Friday found in the fetched date range")
+
+
 def predict_ticker(ticker: str) -> dict:
     ticker_dir = MODELS_DIR / ticker
     scalers = joblib.load(ticker_dir / "scalers.pkl")
@@ -49,14 +62,19 @@ def predict_ticker(ticker: str) -> dict:
     model.eval()
 
     df = add_features(fetch_daily_closes(ticker, period="3mo"))
-    if len(df) < LONG_WINDOW:
-        raise ValueError(f"{ticker}: not enough recent data ({len(df)} rows, need {LONG_WINDOW})")
+    friday_idx = most_recent_friday_index(df.index)
+    if friday_idx + 1 < LONG_WINDOW:
+        raise ValueError(
+            f"{ticker}: not enough data before the most recent Friday "
+            f"({friday_idx + 1} rows, need {LONG_WINDOW})"
+        )
 
     raw_features = df[["Close", "log_return"]].to_numpy()
     features_scaled = scalers.feature.transform(raw_features)
 
-    x_long = features_scaled[-LONG_WINDOW:]
-    x_short = features_scaled[-SHORT_WINDOW:]
+    end = friday_idx + 1  # slice end is exclusive; include the Friday itself
+    x_long = features_scaled[end - LONG_WINDOW:end]
+    x_short = features_scaled[end - SHORT_WINDOW:end]
 
     xs = torch.tensor(x_short, dtype=torch.float32).unsqueeze(0).to(device)
     xl = torch.tensor(x_long, dtype=torch.float32).unsqueeze(0).to(device)
@@ -65,8 +83,8 @@ def predict_ticker(ticker: str) -> dict:
         pred_scaled = model(xs, xl).cpu().numpy()[0]
     pred = scalers.target.inverse_transform(pred_scaled.reshape(-1, 1)).ravel()
 
-    last_date = df.index[-1]
-    last_close = float(df["Close"].iloc[-1])
+    last_date = df.index[friday_idx]
+    last_close = float(df["Close"].iloc[friday_idx])
     target_dates = next_trading_days(last_date, HORIZON)
 
     return {
