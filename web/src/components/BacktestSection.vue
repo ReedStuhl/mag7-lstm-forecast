@@ -10,15 +10,34 @@
       weekly the way predictions do, only when the model is retrained.
     </p>
 
-    <p class="text-sm font-medium mb-2">Average error (RMSE) by day ahead</p>
-    <LineChart
-      :series="rmseSeries"
-      :labels="['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5']"
-      :aria-label="`Model versus naive baseline error by day ahead for ${ticker}`"
-    />
-    <p class="text-sm mt-3" :class="modelWinsOverall ? 'text-emerald-600' : 'text-amber-600'">
-      {{ verdict }}
-    </p>
+    <div class="mb-6">
+      <p class="text-sm font-medium mb-2">Average error (RMSE) by day ahead</p>
+      <LineChart
+        :series="rmseSeries"
+        :labels="['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5']"
+        :aria-label="`Model versus naive baseline error by day ahead for ${ticker}`"
+      />
+      <p class="text-sm mt-3" :class="modelWinsOverall ? 'text-emerald-600' : 'text-amber-600'">
+        {{ verdict }}
+      </p>
+    </div>
+
+    <div v-if="exampleRow">
+      <p class="text-sm font-medium mb-2">
+        One example from the backtest ({{ exampleRow.target_dates[0] }} -
+        {{ exampleRow.target_dates.at(-1) }}) - actual prices vs. what the model and the naive
+        baseline predicted for that week, back when it was still unknown
+      </p>
+      <LineChart
+        :series="[
+          { name: 'Actual', values: exampleRow.actual, color: '#16a34a' },
+          { name: 'Predicted', values: exampleRow.predicted, color: '#2563eb' },
+          { name: 'Naive baseline', values: exampleRow.naive, color: '#9ca3af', dashed: true },
+        ]"
+        :labels="dayLabels(exampleRow.target_dates)"
+        :aria-label="`Actual, predicted, and naive-baseline prices for one backtested week for ${ticker}`"
+      />
+    </div>
 
     <p class="text-xs text-gray-400 mt-4">
       This is an educational demo, not financial advice. Past accuracy (or inaccuracy) doesn't
@@ -30,11 +49,12 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
 import LineChart from './LineChart.vue'
-import type { TickerMetrics } from '../types'
+import type { BacktestRow, TickerMetrics } from '../types'
 
 const props = defineProps<{
   ticker: string
   metrics: TickerMetrics
+  backtest: BacktestRow[]
 }>()
 
 const rmseSeries = computed(() => [
@@ -57,4 +77,13 @@ const verdict = computed(() => {
   if (n === 5) return `The model beat the naive baseline on all 5 days in this backtest.`
   return `The model beat the naive baseline on ${n} of 5 days in this backtest.`
 })
+
+// The most recent test-set example. It's dated and clearly framed as "one
+// example from the backtest" (not "current") since the section header
+// already sets the "as of last training run" context above.
+const exampleRow = computed(() => props.backtest.at(-1))
+
+function dayLabels(dates: string[]): string[] {
+  return dates.map((d) => new Date(d + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' }))
+}
 </script>
