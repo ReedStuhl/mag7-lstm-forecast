@@ -1,5 +1,5 @@
 <template>
-  <div class="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+  <div class="border border-gray-200 rounded-xl p-5">
     <div class="flex items-baseline justify-between mb-1">
       <h3 class="text-lg font-semibold">{{ prediction.ticker }} - next week's forecast</h3>
       <span class="text-xs text-gray-500">as of {{ prediction.as_of_date }}</span>

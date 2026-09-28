@@ -9,8 +9,8 @@
       class="px-4 py-2 rounded-lg border text-sm font-medium transition"
       :class="
         t === modelValue
-          ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-          : 'border-gray-300 text-gray-700 hover:border-gray-500 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-500'
+          ? 'bg-gray-900 text-white border-gray-900'
+          : 'border-gray-300 text-gray-700 hover:border-gray-500'
       "
       @click="$emit('update:modelValue', t)"
     >

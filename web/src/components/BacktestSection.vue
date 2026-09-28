@@ -1,5 +1,5 @@
 <template>
-  <div class="border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+  <div class="border border-gray-200 rounded-xl p-5">
     <h3 class="text-lg font-semibold mb-1">{{ ticker }} - how honest is this model, really?</h3>
     <p class="text-sm text-gray-500 mb-4">
       Backtested on {{ metrics.n_test_examples }} held-out weeks the model never trained on,

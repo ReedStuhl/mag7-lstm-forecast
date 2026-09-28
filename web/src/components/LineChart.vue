@@ -9,7 +9,7 @@
         :x2="width - padding.right"
         :y1="gy.y"
         :y2="gy.y"
-        class="stroke-gray-200 dark:stroke-gray-800"
+        class="stroke-gray-200"
         stroke-width="1"
       />
       <text
@@ -18,7 +18,7 @@
         :x="padding.left - 8"
         :y="gy.y + 4"
         text-anchor="end"
-        class="fill-gray-400 dark:fill-gray-500 text-[10px]"
+        class="fill-gray-400 text-[10px]"
       >
         {{ gy.label }}
       </text>
@@ -49,7 +49,7 @@
         :x="xFor(i)"
         :y="height - 6"
         text-anchor="middle"
-        class="fill-gray-500 dark:fill-gray-400 text-[10px]"
+        class="fill-gray-500 text-[10px]"
       >
         {{ label }}
       </text>
@@ -61,7 +61,7 @@
           class="inline-block w-3 h-0.5"
           :style="{ backgroundColor: s.color, opacity: s.dashed ? 0.6 : 1 }"
         ></span>
-        <span class="text-gray-600 dark:text-gray-400">{{ s.name }}</span>
+        <span class="text-gray-600">{{ s.name }}</span>
       </div>
     </div>
   </div>

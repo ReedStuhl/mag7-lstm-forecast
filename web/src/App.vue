@@ -1,11 +1,8 @@
 <template>
   <div class="min-h-dvh">
     <header class="max-w-3xl mx-auto px-6 pt-10 pb-6 text-center">
-      <div class="flex justify-end mb-4">
-        <DarkModeToggle />
-      </div>
       <h1 class="text-3xl sm:text-4xl font-bold">Magnificent 7 Forecast</h1>
-      <p class="mt-3 text-gray-600 dark:text-gray-400">
+      <p class="mt-3 text-gray-600">
         A small dual-branch LSTM (trained on a 10-day and a 25-day price window) predicts next
         week's closing prices for each of the "Magnificent 7" stocks - and is shown honestly
         against a naive baseline, not just its own numbers.
@@ -56,7 +53,6 @@
 
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue'
-import DarkModeToggle from './components/DarkModeToggle.vue'
 import TickerSelector from './components/TickerSelector.vue'
 import WeekForecastCard from './components/WeekForecastCard.vue'
 import BacktestSection from './components/BacktestSection.vue'
