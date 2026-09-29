@@ -1,6 +1,6 @@
 # Magnificent 7 Forecast
 
-Repo: `mag7-lstm-forecast` · Live: https://web-gamma-kohl-59.vercel.app
+Repo: `mag7-lstm-forecast` · Live: https://magnificent-forecast.vercel.app
 
 An honest, interactive ML demo. A small dual-branch PyTorch LSTM forecasts next week's
 closing prices for the "Magnificent 7" stocks (AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA),
