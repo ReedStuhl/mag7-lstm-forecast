@@ -61,7 +61,8 @@
     <LineChart :series="chartSeries" :labels="chartLabels" :aria-label="ariaLabel" />
 
     <p class="text-xs text-gray-400 mt-3">
-      As of {{ data[window].as_of_date }}. RMSE at this window length:
+      Forecast as of {{ data[window].as_of_date }}, refreshed weekly. RMSE at this window length
+      (as of last training run, {{ data[window].trained_at }}):
       {{ data[window].rmse_by_day.map((v) => '$' + v.toFixed(0)).join(', ') }} by day (naive:
       {{ data[window].naive_rmse_by_day.map((v) => '$' + v.toFixed(0)).join(', ') }}).
     </p>
@@ -111,6 +112,13 @@ const chartLabels = computed(() => [
   ...props.data[window.value].target_dates.map(shortDate),
 ])
 
+// Predicted runs continuously across all 10 days like the main forecast
+// chart: recent_predicted is what the model actually said last week (real,
+// retroactively inferred), predicted is this week's real forecast. The
+// sentiment nudge only applies to the future half - it's a fake "what if"
+// overlay, and sentiment can't retroactively change what was already
+// predicted for a week that's already happened. Naive stays unadjusted
+// throughout, since by definition it ignores every input, including this one.
 const chartSeries = computed<Series[]>(() => {
   const d = props.data[window.value]
   const gap: null[] = [null, null, null, null, null]
@@ -118,8 +126,12 @@ const chartSeries = computed<Series[]>(() => {
 
   return [
     { name: 'Actual', values: [...d.recent_actual, ...gap], color: '#16a34a' },
-    { name: 'Predicted (adjusted)', values: [...gap, ...adjustedPredicted], color: '#2563eb' },
-    { name: 'Naive baseline', values: [...gap, ...d.naive], color: '#9ca3af', dashed: true },
+    {
+      name: 'Predicted (adjusted)',
+      values: [...d.recent_predicted, ...adjustedPredicted],
+      color: '#2563eb',
+    },
+    { name: 'Naive baseline', values: [...d.recent_naive, ...d.naive], color: '#9ca3af', dashed: true },
   ]
 })
 

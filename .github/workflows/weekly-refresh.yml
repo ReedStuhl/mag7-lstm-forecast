@@ -1,10 +1,12 @@
 name: Weekly prediction refresh
 
-# Runs the "predict Mon-Fri" job and refreshes the Mag 7 / S&P 500 stat on
-# a schedule, using the already-trained models (no retraining here - see
-# scripts/train_all.py for that, which is a manual/occasional step).
-# Committing the refreshed JSON to main triggers a redeploy on any static
-# host wired up via Git integration (e.g. Vercel), at no extra cost.
+# Runs the "predict Mon-Fri" job, refreshes the Mag 7 / S&P 500 stat, and
+# refreshes the Prediction Lab's live forecast anchor - all cheap inference
+# against already-trained models, no retraining here (see scripts/train_all.py,
+# scripts/train_lab_models.py, scripts/train_lab_windows.py for that, all
+# manual/occasional steps). Committing the refreshed JSON to main triggers a
+# redeploy on any static host wired up via Git integration (e.g. Vercel), at
+# no extra cost.
 
 on:
   schedule:
@@ -34,11 +36,15 @@ jobs:
       - name: Refresh S&P 500 concentration stat
         run: python -m scripts.sp500_stat
 
+      - name: Refresh Prediction Lab's live forecast (no retraining)
+        run: python -m scripts.predict_lab_windows
+
       - name: Sync data into frontend
         run: |
           mkdir -p web/public/data
           cp data/output/predictions.json web/public/data/predictions.json
           cp data/output/sp500_stat.json web/public/data/sp500_stat.json
+          cp data/output/lab_windows.json web/public/data/lab_windows.json
 
       - name: Commit refreshed data
         run: |

@@ -4,14 +4,19 @@ the Prediction Playground - flipping between these is genuine, backtested
 data, unlike the playground's sentiment control (which is an explicitly
 labeled simulation, computed client-side).
 
-Offline/occasional. Writes data/output/lab_windows.json, keyed by
-short/medium/long, in the same shape predictions.json uses per ticker so
-the frontend can reuse ForecastChart's continuous actual-then-predicted
-line logic.
+Offline/occasional, like scripts/train_all.py - retraining doesn't need to
+happen weekly. The "live" forecast anchor these produce DOES need to stay
+current though; that part is refreshed weekly and cheaply, without
+retraining, by scripts/predict_lab_windows.py (shared logic in
+src/lab_live.py).
+
+Writes data/output/lab_windows.json, keyed by short/medium/long, in the
+same shape predictions.json uses per ticker so the frontend can reuse
+ForecastChart's continuous actual-then-predicted line logic.
 """
 import json
 import sys
-from datetime import timedelta
+import time
 from pathlib import Path
 
 import joblib
@@ -22,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.data import fetch_daily_closes, add_features
 from src.lab_dataset import prepare_dataset, WindowDataset, HORIZON
-from src.lab_model import SimpleSeqModel
+from src.lab_live import live_fields
 from scripts.train_lab_models import train_seq_model, predict_seq, rmse_by_day
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,23 +36,6 @@ OUTPUT_DIR = ROOT / "data" / "output"
 
 TICKER = "NVDA"
 WINDOWS = {"short": 10, "medium": 30, "long": 60}
-
-
-def next_trading_days(start_date, n: int) -> list[str]:
-    days = []
-    d = start_date
-    while len(days) < n:
-        d = d + timedelta(days=1)
-        if d.weekday() < 5:
-            days.append(str(d.date()))
-    return days
-
-
-def most_recent_friday_index(dates) -> int:
-    for i in range(len(dates) - 1, -1, -1):
-        if dates[i].weekday() == 4:
-            return i
-    raise ValueError("No Friday found in the fetched date range")
 
 
 def run_window(label: str, window: int, df) -> dict:
@@ -73,33 +61,12 @@ def run_window(label: str, window: int, df) -> dict:
     print(f"  model rmse by day: {[round(x, 2) for x in rmse_by_day(preds, actual)]}")
     print(f"  naive rmse by day: {[round(x, 2) for x in rmse_by_day(naive, actual)]}")
 
-    # Live-ish anchor: most recent Friday, same convention as predict_week.py,
-    # so the playground's starting point feels current rather than arbitrary.
-    friday_idx = most_recent_friday_index(df.index)
-    raw_features = df[["Close", "log_return"]].to_numpy()
-    features_scaled = scalers.feature.transform(raw_features)
-    end = friday_idx + 1
-    x_live = features_scaled[end - window:end]
-    live_pred_scaled = predict_seq(model, x_live)
-    live_pred = scalers.target.inverse_transform(live_pred_scaled.reshape(-1, 1)).ravel()
-
-    last_date = df.index[friday_idx]
-    last_close = float(df["Close"].iloc[friday_idx])
-    recent_dates = [str(d.date()) for d in df.index[friday_idx - 4:friday_idx + 1]]
-    recent_actual = df["Close"].iloc[friday_idx - 4:friday_idx + 1].tolist()
-    target_dates = next_trading_days(last_date, HORIZON)
-
     return {
         "window_days": window,
-        "as_of_date": str(last_date.date()),
-        "last_close": last_close,
-        "recent_dates": recent_dates,
-        "recent_actual": recent_actual,
-        "target_dates": target_dates,
-        "predicted": live_pred.tolist(),
-        "naive": [last_close] * HORIZON,
         "rmse_by_day": rmse_by_day(preds, actual),
         "naive_rmse_by_day": rmse_by_day(naive, actual),
+        "trained_at": time.strftime("%Y-%m-%d"),
+        **live_fields(model, scalers, df, window, HORIZON),
     }
 
 

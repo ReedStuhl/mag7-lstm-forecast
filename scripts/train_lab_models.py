@@ -10,6 +10,7 @@ Writes data/output/lab_models.json.
 import copy
 import json
 import sys
+import time
 from pathlib import Path
 
 import joblib
@@ -159,6 +160,7 @@ def main():
         "window_days": WINDOW,
         "n_test_examples": len(test_examples),
         "naive_rmse_by_day": naive_rmse,
+        "trained_at": time.strftime("%Y-%m-%d"),
         "models": results,
     }
     (OUTPUT_DIR / "lab_models.json").write_text(json.dumps(out, indent=2))

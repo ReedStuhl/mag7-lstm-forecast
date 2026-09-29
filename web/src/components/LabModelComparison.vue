@@ -1,11 +1,15 @@
 <template>
   <div class="border border-gray-200 rounded-xl p-5">
     <h3 class="text-lg font-semibold mb-1">Naive vs. Linear vs. KNN vs. RNN vs. LSTM</h3>
-    <p class="text-sm text-gray-500 mb-4">
+    <p class="text-sm text-gray-500 mb-1">
       Five different approaches, same {{ data.ticker }} data, same {{ data.window_days }}-day window,
       same 5-day horizon, same held-out test set ({{ data.n_test_examples }} examples). Only the
       algorithm changes - this is a real, backtested comparison, not a description of how they
       differ in theory.
+    </p>
+    <p class="text-xs text-gray-400 mb-4">
+      As of the last training run ({{ data.trained_at }}) - this is a backtest, so it doesn't
+      update weekly the way live forecasts do, only when these models are retrained.
     </p>
 
     <div class="flex flex-wrap gap-2 mb-5" role="tablist" aria-label="Choose a model type">
