@@ -76,10 +76,8 @@ export interface LabWindowResult {
   window_days: number
   as_of_date: string
   last_close: number
-  recent_dates: string[]
-  recent_actual: number[]
-  recent_predicted: number[]
-  recent_naive: number[]
+  history_dates: string[]
+  history_actual: number[]
   target_dates: string[]
   predicted: number[]
   naive: number[]
