@@ -32,12 +32,7 @@
 
         <ForecastChart v-if="currentPrediction" :prediction="currentPrediction" />
 
-        <BacktestSection
-          v-if="currentMetrics && currentBacktest"
-          :ticker="selected"
-          :metrics="currentMetrics"
-          :backtest="currentBacktest"
-        />
+        <BacktestSection v-if="currentMetrics" :ticker="selected" :metrics="currentMetrics" />
       </template>
     </main>
 
@@ -58,7 +53,7 @@ import ForecastChart from './components/ForecastChart.vue'
 import BacktestSection from './components/BacktestSection.vue'
 import Sp500StatBanner from './components/Sp500StatBanner.vue'
 import LiveQuote from './components/LiveQuote.vue'
-import { TICKERS, type BacktestFile, type MetricsFile, type PredictionsFile, type Sp500Stat, type Ticker } from './types'
+import { TICKERS, type MetricsFile, type PredictionsFile, type Sp500Stat, type Ticker } from './types'
 
 const selected = ref<Ticker>('NVDA')
 const loading = ref(true)
@@ -66,24 +61,20 @@ const loadError = ref(false)
 
 const predictions = ref<PredictionsFile | null>(null)
 const metrics = ref<MetricsFile | null>(null)
-const backtest = ref<BacktestFile | null>(null)
 const sp500Stat = ref<Sp500Stat | null>(null)
 
 const currentPrediction = computed(() => predictions.value?.[selected.value] ?? null)
 const currentMetrics = computed(() => metrics.value?.[selected.value] ?? null)
-const currentBacktest = computed(() => backtest.value?.[selected.value] ?? null)
 
 onMounted(async () => {
   try {
-    const [p, m, b, s] = await Promise.all([
+    const [p, m, s] = await Promise.all([
       fetch('/data/predictions.json').then((r) => r.json()),
       fetch('/data/metrics.json').then((r) => r.json()),
-      fetch('/data/backtest.json').then((r) => r.json()),
       fetch('/data/sp500_stat.json').then((r) => r.json()),
     ])
     predictions.value = p
     metrics.value = m
-    backtest.value = b
     sp500Stat.value = s
   } catch {
     loadError.value = true
