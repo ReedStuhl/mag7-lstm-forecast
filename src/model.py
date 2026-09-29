@@ -2,15 +2,15 @@ import torch
 import torch.nn as nn
 
 SHORT_WINDOW = 10   # trading days
-LONG_WINDOW = 25    # trading days (~1 trading month)
+LONG_WINDOW = 30    # trading days (~6 weeks)
 HORIZON = 5          # trading days predicted (Mon-Fri)
 N_FEATURES = 2        # close (scaled), log_return
 
 
 class DualBranchLSTM(nn.Module):
     """Two LSTM branches read the same feature series at different lookback
-    lengths (short-term momentum vs ~monthly cycle); their final hidden
-    states are concatenated and mapped to a 5-value (Mon-Fri) forecast."""
+    lengths (short-term momentum vs a longer ~6-week cycle); their final
+    hidden states are concatenated and mapped to a 5-value (Mon-Fri) forecast."""
 
     def __init__(self, n_features: int = N_FEATURES, hidden_dim: int = 32, horizon: int = HORIZON):
         super().__init__()

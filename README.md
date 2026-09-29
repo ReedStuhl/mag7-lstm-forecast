@@ -16,8 +16,8 @@ claims are backed by what's actually implemented; see "What this is (and isn't)"
 ## How it works
 
 **Model** (`src/model.py`): two small LSTM branches read the same price series at two
-lookback lengths - 10 trading days (short-term momentum) and 25 trading days (~1 trading
-month) - and their final hidden states are combined into a single head that predicts the
+lookback lengths - 10 trading days (short-term momentum) and 30 trading days (~6 weeks)
+- and their final hidden states are combined into a single head that predicts the
 next 5 trading days' closes in one forward pass (not autoregressively - each day is
 predicted directly from the same starting window, so Friday's forecast isn't built on
 Thursday's guess).

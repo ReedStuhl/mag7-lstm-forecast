@@ -3,7 +3,7 @@
     <header class="max-w-3xl mx-auto px-6 pt-10 pb-6 text-center">
       <h1 class="text-3xl sm:text-4xl font-bold">Magnificent 7 Forecast</h1>
       <p class="mt-3 text-gray-600">
-        A small dual-branch LSTM (trained on a 10-day and a 25-day price window) predicts next
+        A small dual-branch LSTM (trained on a 10-day and a 30-day price window) predicts next
         week's closing prices for each of the "Magnificent 7" stocks - and is shown honestly
         against a naive baseline, not just its own numbers.
       </p>

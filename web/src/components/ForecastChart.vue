@@ -2,7 +2,7 @@
   <div class="border border-gray-200 rounded-xl p-5">
     <div class="flex items-baseline justify-between mb-1">
       <h3 class="text-lg font-semibold">{{ prediction.ticker }} - Recent Accuracy & Current Forecast</h3>
-      <span class="text-xs text-gray-500">data through {{ longDate(prediction.as_of_date) }}</span>
+      <span class="text-xs text-gray-500">as of {{ longDate(prediction.as_of_date) }}</span>
     </div>
     <p class="text-sm text-gray-500 mb-4">
       Last week, the model {{ lastWeekVerdict }}. {{ targetWeekLabelCap }}'s forecast points to
