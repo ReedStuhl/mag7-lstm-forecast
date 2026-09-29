@@ -97,5 +97,6 @@ def prepare_ticker_dataset(df):
         "scalers": scalers,
         "dates": df.index,
         "raw_closes": raw_closes,
+        "val_examples": val,
         "test_examples": test,
     }

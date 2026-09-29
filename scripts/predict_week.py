@@ -71,9 +71,17 @@ def infer(model, scalers, features_scaled, anchor_idx: int) -> list[float]:
     return scalers.target.inverse_transform(pred_scaled.reshape(-1, 1)).ravel().tolist()
 
 
+def blend(predicted: list[float], naive: list[float], alpha: float) -> list[float]:
+    """Same blend applied at training/backtest time (src/evaluate.py's
+    blend_rows) - alpha was tuned on validation data per ticker, so the
+    live forecast reflects the same methodology reported in the backtest."""
+    return [alpha * p + (1 - alpha) * n for p, n in zip(predicted, naive)]
+
+
 def predict_ticker(ticker: str) -> dict:
     ticker_dir = MODELS_DIR / ticker
     scalers = joblib.load(ticker_dir / "scalers.pkl")
+    alpha = json.loads((ticker_dir / "blend.json").read_text())["alpha"]
 
     model = DualBranchLSTM().to(device)
     model.load_state_dict(torch.load(ticker_dir / "model.pth", map_location=device))
@@ -90,7 +98,7 @@ def predict_ticker(ticker: str) -> dict:
     raw_features = df[["Close", "log_return"]].to_numpy()
     features_scaled = scalers.feature.transform(raw_features)
 
-    pred = infer(model, scalers, features_scaled, friday_idx)
+    raw_pred = infer(model, scalers, features_scaled, friday_idx)
 
     last_date = df.index[friday_idx]
     last_close = float(df["Close"].iloc[friday_idx])
@@ -108,6 +116,7 @@ def predict_ticker(ticker: str) -> dict:
     # chart show the model against that baseline for the *upcoming* week
     # too, not just historically.
     naive = [last_close] * HORIZON
+    pred = blend(raw_pred, naive, alpha)
 
     # What the model (and naive baseline) would have said for LAST week,
     # computed retroactively using the window that existed before it
@@ -121,8 +130,9 @@ def predict_ticker(ticker: str) -> dict:
             f"{ticker}: not enough data before the prior Friday to retroactively "
             f"infer last week's prediction ({prev_friday_idx + 1} rows, need {LONG_WINDOW})"
         )
-    recent_predicted = infer(model, scalers, features_scaled, prev_friday_idx)
+    raw_recent_predicted = infer(model, scalers, features_scaled, prev_friday_idx)
     recent_naive = [float(df["Close"].iloc[prev_friday_idx])] * HORIZON
+    recent_predicted = blend(raw_recent_predicted, recent_naive, alpha)
 
     return {
         "ticker": ticker,

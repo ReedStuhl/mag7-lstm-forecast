@@ -29,6 +29,7 @@ export interface TickerMetrics {
   n_train_examples: number
   final_train_loss: number
   final_val_loss: number
+  blend_alpha: number
   trained_at: string
 }
 

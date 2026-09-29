@@ -47,3 +47,42 @@ def evaluate_test_set(model, test_examples, scalers, raw_closes):
         "model_rmse_by_day": model_rmse,
         "naive_rmse_by_day": naive_rmse,
     }
+
+
+def find_best_alpha(rows: list[dict]) -> float:
+    """Grid-searches a single blend weight alpha in [0, 1] such that
+    blended = alpha * model_prediction + (1 - alpha) * naive_prediction
+    minimizes RMSE across all days combined, on the given rows.
+
+    Call this on VALIDATION rows only, never on test rows - alpha=0 (pure
+    naive) is always in the grid, so the chosen alpha can never do worse
+    than naive on the data it's tuned against; whether that holds on
+    genuinely held-out data is exactly what the test-set evaluation is for.
+    One alpha per ticker rather than one per horizon day, since a
+    validation set of a few dozen examples is too little to trust 5
+    separately-tuned weights without just fitting validation noise.
+    """
+    predicted = np.array([r["predicted"] for r in rows])
+    naive = np.array([r["naive"] for r in rows])
+    actual = np.array([r["actual"] for r in rows])
+
+    best_alpha, best_rmse = 0.0, float("inf")
+    for alpha in np.linspace(0.0, 1.0, 21):
+        blended = alpha * predicted + (1 - alpha) * naive
+        rmse = float(np.sqrt(np.mean((blended - actual) ** 2)))
+        if rmse < best_rmse:
+            best_alpha, best_rmse = float(alpha), rmse
+    return best_alpha
+
+
+def blend_rows(rows: list[dict], alpha: float) -> list[dict]:
+    """Replaces each row's 'predicted' with alpha * predicted + (1 - alpha) *
+    naive - this is what the site actually reports/serves as 'the model's'
+    prediction from here on, not the raw network output alone."""
+    blended = []
+    for r in rows:
+        predicted = np.array(r["predicted"])
+        naive = np.array(r["naive"])
+        blended_pred = alpha * predicted + (1 - alpha) * naive
+        blended.append({**r, "predicted": blended_pred.tolist()})
+    return blended
