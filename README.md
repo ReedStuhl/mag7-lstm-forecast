@@ -28,13 +28,15 @@ data; the 30-day branch was added back alongside them rather than in place of th
 **Blending with naive** (`src/evaluate.py`): each ticker's raw model output is blended with
 the naive baseline, `alpha * model + (1 - alpha) * naive`, where `alpha` is grid-searched
 per ticker on validation data only (never on the test set the backtest reports) to minimize
-RMSE, subject to a floor of 0.6 - the model always gets at least 60% of the blend weight.
+RMSE, subject to a floor of 0.75 - the model always gets at least 75% of the blend weight.
 Without that floor, a weak model would get blended down toward pure naive, which minimizes
 RMSE but produces a forecast line that's visually indistinguishable from "no change" -
-which defeats the point of showing a model prediction at all. The floor is a deliberate
-trade of some backtested accuracy for a forecast that's recognizably the model's own; on
-tickers where the model is weak (see MSFT below) it can make the reported RMSE noticeably
-worse than naive, and that's shown plainly rather than hidden.
+which defeats the point of showing a model prediction at all. The floor was raised from an
+earlier 0.6 specifically to push the forecast further from naive; on this backtest that
+change happened to *help* the win rate too (see below), but that's not a guarantee - it's a
+small validation set, and the floor's purpose is legibility, not accuracy. On tickers where
+the model is weak (AAPL, MSFT, META) it makes the reported RMSE noticeably worse than
+naive, and that's shown plainly rather than hidden.
 
 **Training** (`scripts/train_all.py`): ~1 year of daily data per ticker via `yfinance`,
 chronological 70/15/15 train/val/test split (scalers fit on train only, no leakage), early
@@ -49,14 +51,14 @@ job, and it's the piece meant to run on a schedule (see
 **Backtest / honesty check** (baked into `train_all.py`'s evaluation step): every test-set
 prediction (after blending) is compared against what actually happened and against the
 naive baseline, with RMSE reported per day-ahead. In the current backtest the blended model
-beats naive on 12 of 35 ticker/day combinations - GOOGL (5/5), TSLA (3/5), NVDA (3/5), and
-AMZN (1/5) favor the model on at least one day; AAPL, MSFT, and META still favor naive
-across the board, with MSFT's blend performing distinctly worse than naive since the 0.6
-alpha floor forces real weight onto a weak MSFT model instead of collapsing toward naive.
-Before any of this tuning the model beat naive on 3 of 35; the run before this one (no
-alpha floor) reached 14 of 35 but produced forecast lines nearly identical to naive on
-several tickers. That three-way trade-off is the headline finding this demo leads with,
-not something it hides.
+beats naive on 15 of 35 ticker/day combinations - TSLA (5/5), GOOGL (4/5), AMZN (3/5), and
+NVDA (3/5) favor the model on at least some days; AAPL, MSFT, and META still favor naive
+across the board, with MSFT's blend performing distinctly worse than naive since the alpha
+floor forces real weight onto a weak MSFT model instead of collapsing toward naive. Before
+any of this tuning the model beat naive on 3 of 35; a 0.6 alpha floor reached 12 of 35; an
+unfloored blend reached 14 of 35 but produced forecast lines nearly identical to naive on
+several tickers. That trade-off between legibility and accuracy is the headline finding
+this demo leads with, not something it hides.
 
 **S&P 500 concentration stat** (`scripts/sp500_stat.py`): sums live market caps for all
 500+ current S&P 500 constituents (pulled from Wikipedia's constituent list, priced via
@@ -72,9 +74,9 @@ render if `VITE_FINNHUB_API_KEY` isn't set).
 
 This is an educational demo of an honest ML evaluation process, not a trading signal. The
 model does not reliably beat a naive baseline across all 7 tickers in the current backtest
-- it does on some (GOOGL, NVDA, TSLA, partially AMZN), it does distinctly worse on others
-(MSFT especially) - and that's reported front and center in the UI rather than buried.
-Nothing here is investment advice.
+- it does on some (TSLA, GOOGL, AMZN, NVDA), it does distinctly worse on others (AAPL, MSFT,
+META) - and that's reported front and center in the UI rather than buried. Nothing here is
+investment advice.
 
 ## Running it yourself
 

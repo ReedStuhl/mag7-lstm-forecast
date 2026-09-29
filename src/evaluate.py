@@ -60,7 +60,7 @@ def evaluate_test_set(model, test_examples, scalers, raw_closes):
 # unfloored blend (or worse than naive outright) on tickers where the model
 # is weak, in exchange for the forecast always reflecting real model output.
 # That trade-off is disclosed in the UI, not hidden.
-ALPHA_FLOOR = 0.6
+ALPHA_FLOOR = 0.75
 
 
 def find_best_alpha(rows: list[dict], floor: float = ALPHA_FLOOR) -> float:
