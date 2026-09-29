@@ -45,3 +45,43 @@ export interface Sp500Stat {
 export type PredictionsFile = Record<Ticker, WeekPrediction>
 export type BacktestFile = Record<Ticker, BacktestRow[]>
 export type MetricsFile = Record<Ticker, TickerMetrics>
+
+// --- Prediction Lab ---
+
+export const LAB_MODEL_TYPES = ['naive', 'linear', 'knn', 'rnn', 'lstm'] as const
+export type LabModelType = (typeof LAB_MODEL_TYPES)[number]
+
+export interface LabModelResult {
+  rmse_by_day: number[]
+  example: {
+    actual: number[]
+    predicted: number[]
+    naive: number[]
+  }
+}
+
+export interface LabModelsFile {
+  ticker: Ticker
+  window_days: number
+  n_test_examples: number
+  naive_rmse_by_day: number[]
+  models: Record<LabModelType, LabModelResult>
+}
+
+export const LAB_WINDOW_LABELS = ['short', 'medium', 'long'] as const
+export type LabWindowLabel = (typeof LAB_WINDOW_LABELS)[number]
+
+export interface LabWindowResult {
+  window_days: number
+  as_of_date: string
+  last_close: number
+  recent_dates: string[]
+  recent_actual: number[]
+  target_dates: string[]
+  predicted: number[]
+  naive: number[]
+  rmse_by_day: number[]
+  naive_rmse_by_day: number[]
+}
+
+export type LabWindowsFile = { ticker: Ticker } & Record<LabWindowLabel, LabWindowResult>
