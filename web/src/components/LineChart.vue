@@ -32,21 +32,23 @@
           :stroke-width="s.width ?? 2"
           :stroke-dasharray="s.dashed ? '5,4' : undefined"
         />
-        <template v-for="(v, i) in s.values" :key="i">
+        <template v-if="showMarkers" v-for="(v, i) in s.values" :key="i">
           <circle v-if="v != null" :cx="xFor(i)" :cy="yFor(v)" r="3" :fill="s.color" />
         </template>
       </g>
 
-      <!-- x labels -->
+      <!-- x labels: thinned out when there are a lot of points, so they don't
+           overlap into an unreadable smear - the data itself still plots at
+           full resolution, this only reduces which tick text gets printed. -->
       <text
-        v-for="(label, i) in labels"
+        v-for="i in visibleLabelIndexes"
         :key="'x' + i"
         :x="xFor(i)"
         :y="height - 6"
         text-anchor="middle"
         class="fill-gray-500 text-[10px]"
       >
-        {{ label }}
+        {{ labels[i] }}
       </text>
     </svg>
 
@@ -115,5 +117,23 @@ const gridLines = computed(() => {
     const v = minV.value + (range.value * i) / steps
     return { y: yFor(v), label: `$${v.toFixed(0)}` }
   })
+})
+
+// Dense charts (dozens of days of history) get thinned-out x-axis text and
+// no per-point markers, so they read as a clean line instead of a smear of
+// overlapping labels and dots. Sparser charts (a handful of days) keep both.
+const DENSE_THRESHOLD = 16
+const MAX_VISIBLE_LABELS = 10
+
+const showMarkers = computed(() => props.labels.length <= DENSE_THRESHOLD)
+
+const visibleLabelIndexes = computed(() => {
+  const n = props.labels.length
+  if (n <= MAX_VISIBLE_LABELS) return Array.from({ length: n }, (_, i) => i)
+  const step = Math.ceil(n / MAX_VISIBLE_LABELS)
+  const indexes = []
+  for (let i = 0; i < n; i += step) indexes.push(i)
+  if (indexes[indexes.length - 1] !== n - 1) indexes.push(n - 1)
+  return indexes
 })
 </script>

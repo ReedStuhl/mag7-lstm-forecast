@@ -28,6 +28,28 @@
       </div>
     </div>
 
+    <div class="mb-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-2">
+        History shown (real price data, for context)
+      </p>
+      <div class="flex gap-2">
+        <button
+          v-for="h in historyOptions"
+          :key="h"
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm font-medium transition"
+          :class="
+            h === historyDays
+              ? 'bg-gray-900 text-white border-gray-900'
+              : 'border-gray-300 text-gray-700 hover:border-gray-500'
+          "
+          @click="historyDays = h"
+        >
+          {{ h }} days
+        </button>
+      </div>
+    </div>
+
     <div class="mb-5">
       <p class="text-xs font-medium uppercase tracking-wide text-amber-600 mb-2">
         News sentiment (simulated, not real news data)
@@ -85,6 +107,9 @@ const windowLabels: Record<LabWindowLabel, string> = {
 
 const window = ref<LabWindowLabel>('medium')
 
+const historyOptions = [5, 30, 60] as const
+const historyDays = ref<(typeof historyOptions)[number]>(30)
+
 type SentimentLevel = -1 | 0 | 1
 const sentiment = ref<SentimentLevel>(0)
 const sentimentOptions: { value: SentimentLevel; label: string }[] = [
@@ -108,23 +133,33 @@ function shortDate(d: string): string {
   return `${Number(m)}/${Number(day)}`
 }
 
+const history = computed(() => {
+  const d = props.data[window.value]
+  const n = historyDays.value
+  return {
+    dates: d.history_dates.slice(-n),
+    actual: d.history_actual.slice(-n),
+  }
+})
+
 const chartLabels = computed(() => [
-  ...props.data[window.value].recent_dates.map(shortDate),
+  ...history.value.dates.map(shortDate),
   ...props.data[window.value].target_dates.map(shortDate),
 ])
 
-// Actual shows the real last-known week (left half only, since the right
-// half hasn't happened yet). Predicted and Naive baseline only cover the
-// forecasted 5 days (right half) - this is the playground's forecast, not
-// a look back at how the model did last time (that comparison already
-// lives in the model-comparison section above).
+// Actual shows real price history (length set by the history control),
+// nothing for the forecast period since that hasn't happened yet.
+// Predicted and Naive baseline only cover the forecasted 5 days - this is
+// the playground's forecast, not a look back at how the model did last
+// time (that comparison already lives in the model-comparison section
+// above).
 const chartSeries = computed<Series[]>(() => {
   const d = props.data[window.value]
-  const gap: null[] = [null, null, null, null, null]
+  const gap: null[] = Array(historyDays.value).fill(null)
   const adjustedPredicted = applySentiment(d.predicted, sentiment.value)
 
   return [
-    { name: 'Actual', values: [...d.recent_actual, ...gap], color: '#16a34a' },
+    { name: 'Actual', values: [...history.value.actual, ...gap], color: '#16a34a' },
     {
       name: 'Predicted (adjusted)',
       values: [...gap, ...adjustedPredicted],
