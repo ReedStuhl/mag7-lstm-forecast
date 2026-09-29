@@ -113,13 +113,11 @@ const chartLabels = computed(() => [
   ...props.data[window.value].target_dates.map(shortDate),
 ])
 
-// Predicted runs continuously across all 10 days like the main forecast
-// chart: recent_predicted is what the model actually said last week (real,
-// retroactively inferred), predicted is this week's real forecast. The
-// sentiment nudge only applies to the future half - it's a fake "what if"
-// overlay, and sentiment can't retroactively change what was already
-// predicted for a week that's already happened. Naive stays unadjusted
-// throughout, since by definition it ignores every input, including this one.
+// Actual shows the real last-known week (left half only, since the right
+// half hasn't happened yet). Predicted and Naive baseline only cover the
+// forecasted 5 days (right half) - this is the playground's forecast, not
+// a look back at how the model did last time (that comparison already
+// lives in the model-comparison section above).
 const chartSeries = computed<Series[]>(() => {
   const d = props.data[window.value]
   const gap: null[] = [null, null, null, null, null]
@@ -129,10 +127,10 @@ const chartSeries = computed<Series[]>(() => {
     { name: 'Actual', values: [...d.recent_actual, ...gap], color: '#16a34a' },
     {
       name: 'Predicted (adjusted)',
-      values: [...d.recent_predicted, ...adjustedPredicted],
+      values: [...gap, ...adjustedPredicted],
       color: '#2563eb',
     },
-    { name: 'Naive baseline', values: [...d.recent_naive, ...d.naive], color: '#9ca3af', dashed: true },
+    { name: 'Naive baseline', values: [...gap, ...d.naive], color: '#9ca3af', dashed: true },
   ]
 })
 
