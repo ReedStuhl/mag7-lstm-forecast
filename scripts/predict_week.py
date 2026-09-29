@@ -19,7 +19,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.data import MAGNIFICENT_7, fetch_daily_closes, add_features
-from src.model import DualBranchLSTM, SHORT_WINDOW, LONG_WINDOW, HORIZON
+from src.model import TripleBranchLSTM, SHORT_WINDOW, MEDIUM_WINDOW, LONG_WINDOW, HORIZON
 from src.train import device
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,13 +61,15 @@ def infer(model, scalers, features_scaled, anchor_idx: int) -> list[float]:
     either way, just a different anchor."""
     end = anchor_idx + 1  # slice end is exclusive; include the anchor day itself
     x_long = features_scaled[end - LONG_WINDOW:end]
+    x_medium = features_scaled[end - MEDIUM_WINDOW:end]
     x_short = features_scaled[end - SHORT_WINDOW:end]
 
     xs = torch.tensor(x_short, dtype=torch.float32).unsqueeze(0).to(device)
+    xm = torch.tensor(x_medium, dtype=torch.float32).unsqueeze(0).to(device)
     xl = torch.tensor(x_long, dtype=torch.float32).unsqueeze(0).to(device)
 
     with torch.no_grad():
-        pred_scaled = model(xs, xl).cpu().numpy()[0]
+        pred_scaled = model(xs, xm, xl).cpu().numpy()[0]
     return scalers.target.inverse_transform(pred_scaled.reshape(-1, 1)).ravel().tolist()
 
 
@@ -83,7 +85,7 @@ def predict_ticker(ticker: str) -> dict:
     scalers = joblib.load(ticker_dir / "scalers.pkl")
     alpha = json.loads((ticker_dir / "blend.json").read_text())["alpha"]
 
-    model = DualBranchLSTM().to(device)
+    model = TripleBranchLSTM().to(device)
     model.load_state_dict(torch.load(ticker_dir / "model.pth", map_location=device))
     model.eval()
 

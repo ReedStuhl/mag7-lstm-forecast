@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from .model import DualBranchLSTM
+from .model import TripleBranchLSTM
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -15,8 +15,8 @@ WEIGHT_DECAY = 1e-4
 PATIENCE = 15  # stop if val_loss hasn't improved in this many epochs
 
 
-def train_model(train_ds, val_ds, epochs: int = EPOCHS) -> tuple[DualBranchLSTM, list[float], list[float]]:
-    model = DualBranchLSTM().to(device)
+def train_model(train_ds, val_ds, epochs: int = EPOCHS) -> tuple[TripleBranchLSTM, list[float], list[float]]:
+    model = TripleBranchLSTM().to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 
@@ -31,10 +31,12 @@ def train_model(train_ds, val_ds, epochs: int = EPOCHS) -> tuple[DualBranchLSTM,
     for epoch in range(1, epochs + 1):
         model.train()
         total = 0.0
-        for x_short, x_long, y in train_loader:
-            x_short, x_long, y = x_short.to(device), x_long.to(device), y.to(device)
+        for x_short, x_medium, x_long, y in train_loader:
+            x_short, x_medium, x_long, y = (
+                x_short.to(device), x_medium.to(device), x_long.to(device), y.to(device)
+            )
             optimizer.zero_grad()
-            preds = model(x_short, x_long)
+            preds = model(x_short, x_medium, x_long)
             loss = criterion(preds, y)
             loss.backward()
             optimizer.step()
@@ -45,9 +47,11 @@ def train_model(train_ds, val_ds, epochs: int = EPOCHS) -> tuple[DualBranchLSTM,
         model.eval()
         vtotal = 0.0
         with torch.no_grad():
-            for x_short, x_long, y in val_loader:
-                x_short, x_long, y = x_short.to(device), x_long.to(device), y.to(device)
-                preds = model(x_short, x_long)
+            for x_short, x_medium, x_long, y in val_loader:
+                x_short, x_medium, x_long, y = (
+                    x_short.to(device), x_medium.to(device), x_long.to(device), y.to(device)
+                )
+                preds = model(x_short, x_medium, x_long)
                 vtotal += criterion(preds, y).item()
         val_loss = vtotal / max(len(val_loader), 1)
         val_losses.append(val_loss)

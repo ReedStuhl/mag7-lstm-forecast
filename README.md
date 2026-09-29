@@ -2,7 +2,7 @@
 
 Repo: `mag7-lstm-forecast` · Live: https://magnificent-forecast.vercel.app
 
-An honest, interactive ML demo. A small dual-branch PyTorch LSTM forecasts next week's
+An honest, interactive ML demo. A small triple-branch PyTorch LSTM forecasts next week's
 closing prices for the "Magnificent 7" stocks (AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA),
 blended with a naive "assume no change" baseline, and is shown transparently against that
 same baseline - including the tickers and days where the baseline still wins, which in this
@@ -16,22 +16,25 @@ claims are backed by what's actually implemented; see "What this is (and isn't)"
 
 ## How it works
 
-**Model** (`src/model.py`): two small LSTM branches read the same price series at two
-lookback lengths - 5 trading days (short-term momentum) and 15 trading days (~3 weeks)
-- and their final hidden states are combined into a single head that predicts the
-next 5 trading days' closes in one forward pass (not autoregressively - each day is
-predicted directly from the same starting window, so Friday's forecast isn't built on
-Thursday's guess). These windows were shrunk down from an earlier 10/30-day version based
-on the Prediction Lab's window-length experiment, which backtested shorter windows closer
-to naive than longer ones on real data.
+**Model** (`src/model.py`): three small LSTM branches read the same price series at three
+lookback lengths - 5 trading days (short-term momentum), 15 trading days (~3 weeks), and
+30 trading days (~6 weeks) - and their final hidden states are combined into a single head
+that predicts the next 5 trading days' closes in one forward pass (not autoregressively -
+each day is predicted directly from the same starting window, so Friday's forecast isn't
+built on Thursday's guess). The 5/15-day pair came from the Prediction Lab's window-length
+experiment, which backtested shorter windows closer to naive than a longer one on real
+data; the 30-day branch was added back alongside them rather than in place of them.
 
 **Blending with naive** (`src/evaluate.py`): each ticker's raw model output is blended with
 the naive baseline, `alpha * model + (1 - alpha) * naive`, where `alpha` is grid-searched
 per ticker on validation data only (never on the test set the backtest reports) to minimize
-RMSE. This is a hedge, not a trick - since `alpha = 0` (pure naive) is always in the search
-grid, the chosen blend can never do worse than naive on the data it was tuned against;
-whether that holds up on genuinely held-out test data is exactly what the backtest below
-checks, honestly, ticker by ticker.
+RMSE, subject to a floor of 0.6 - the model always gets at least 60% of the blend weight.
+Without that floor, a weak model would get blended down toward pure naive, which minimizes
+RMSE but produces a forecast line that's visually indistinguishable from "no change" -
+which defeats the point of showing a model prediction at all. The floor is a deliberate
+trade of some backtested accuracy for a forecast that's recognizably the model's own; on
+tickers where the model is weak (see MSFT below) it can make the reported RMSE noticeably
+worse than naive, and that's shown plainly rather than hidden.
 
 **Training** (`scripts/train_all.py`): ~1 year of daily data per ticker via `yfinance`,
 chronological 70/15/15 train/val/test split (scalers fit on train only, no leakage), early
@@ -46,10 +49,14 @@ job, and it's the piece meant to run on a schedule (see
 **Backtest / honesty check** (baked into `train_all.py`'s evaluation step): every test-set
 prediction (after blending) is compared against what actually happened and against the
 naive baseline, with RMSE reported per day-ahead. In the current backtest the blended model
-beats naive on 14 of 35 ticker/day combinations - GOOGL, NVDA, and TSLA net favor the model,
-AAPL, MSFT, AMZN, and META still favor naive across the board - up from 3 of 35 before this
-round of tuning, but naive still wins more often than not overall. That mixed result is the
-headline finding this demo leads with, not something it hides.
+beats naive on 12 of 35 ticker/day combinations - GOOGL (5/5), TSLA (3/5), NVDA (3/5), and
+AMZN (1/5) favor the model on at least one day; AAPL, MSFT, and META still favor naive
+across the board, with MSFT's blend performing distinctly worse than naive since the 0.6
+alpha floor forces real weight onto a weak MSFT model instead of collapsing toward naive.
+Before any of this tuning the model beat naive on 3 of 35; the run before this one (no
+alpha floor) reached 14 of 35 but produced forecast lines nearly identical to naive on
+several tickers. That three-way trade-off is the headline finding this demo leads with,
+not something it hides.
 
 **S&P 500 concentration stat** (`scripts/sp500_stat.py`): sums live market caps for all
 500+ current S&P 500 constituents (pulled from Wikipedia's constituent list, priced via
@@ -65,8 +72,9 @@ render if `VITE_FINNHUB_API_KEY` isn't set).
 
 This is an educational demo of an honest ML evaluation process, not a trading signal. The
 model does not reliably beat a naive baseline across all 7 tickers in the current backtest
-- it does on some (GOOGL, NVDA, TSLA), it doesn't on others - and that's reported front and
-center in the UI rather than buried. Nothing here is investment advice.
+- it does on some (GOOGL, NVDA, TSLA, partially AMZN), it does distinctly worse on others
+(MSFT especially) - and that's reported front and center in the UI rather than buried.
+Nothing here is investment advice.
 
 ## Running it yourself
 

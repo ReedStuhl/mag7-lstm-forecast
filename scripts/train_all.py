@@ -1,4 +1,4 @@
-"""Trains the dual-branch LSTM for every Magnificent 7 ticker, evaluates each
+"""Trains the triple-branch LSTM for every Magnificent 7 ticker, evaluates each
 on a held-out chronological test set against a naive baseline, and writes:
   - models/<TICKER>/model.pth + scalers.pkl   (for scripts/predict_week.py)
   - data/output/backtest.json                 (predicted vs actual, for the frontend)
