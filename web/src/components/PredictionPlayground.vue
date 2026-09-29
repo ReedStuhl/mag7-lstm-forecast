@@ -3,12 +3,12 @@
     <h3 class="text-lg font-semibold mb-1">Prediction Playground</h3>
     <p class="text-sm text-gray-500 mb-5">
       Change what the model is looking at, and watch the forecast move. The window control is
-      real - it swaps between actually-trained models. The news sentiment control is not.
+      real: it swaps between actually trained models. The news sentiment control is not.
     </p>
 
     <div class="mb-4">
       <p class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-2">
-        Window length (real - swaps trained models)
+        Window length (real, swaps trained models)
       </p>
       <div class="flex gap-2">
         <button
@@ -30,7 +30,7 @@
 
     <div class="mb-5">
       <p class="text-xs font-medium uppercase tracking-wide text-amber-600 mb-2">
-        News sentiment (simulated - not real news data)
+        News sentiment (simulated, not real news data)
       </p>
       <div class="flex gap-2">
         <button
@@ -52,10 +52,11 @@
 
     <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-5 text-xs text-amber-800">
       <strong>This is a simulation, not a real prediction.</strong> There's no news or social data
-      behind the sentiment control - it applies a simple, made-up rule (a small daily price nudge,
-      growing the further into the week you look) so you can feel how "weighing an input more
-      heavily" changes an output. The window control is genuinely real: it's swapping between LSTM
-      models actually trained on {{ data[window].window_days }} days of price history each.
+      behind the sentiment control. It applies a simple, invented rule (a small daily price nudge
+      that grows the further into the week you look) so you can feel how weighing an input more
+      heavily changes an output. The window control is genuinely real: it's swapping between Long
+      Short-Term Memory (LSTM) models actually trained on {{ data[window].window_days }} days of
+      price history each.
     </div>
 
     <LineChart :series="chartSeries" :labels="chartLabels" :aria-label="ariaLabel" />
