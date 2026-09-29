@@ -22,6 +22,7 @@
       <template v-else-if="labModels && labWindows">
         <LabModelComparison :data="labModels" />
         <PredictionPlayground :data="labWindows" />
+        <HorizonFinding v-if="metrics" :metrics="metrics" />
         <LabEssay />
       </template>
     </main>
@@ -36,22 +37,26 @@
 import { onMounted, ref } from 'vue'
 import LabModelComparison from '../components/LabModelComparison.vue'
 import PredictionPlayground from '../components/PredictionPlayground.vue'
+import HorizonFinding from '../components/HorizonFinding.vue'
 import LabEssay from '../components/LabEssay.vue'
-import type { LabModelsFile, LabWindowsFile } from '../types'
+import type { LabModelsFile, LabWindowsFile, MetricsFile } from '../types'
 
 const loading = ref(true)
 const loadError = ref(false)
 const labModels = ref<LabModelsFile | null>(null)
 const labWindows = ref<LabWindowsFile | null>(null)
+const metrics = ref<MetricsFile | null>(null)
 
 onMounted(async () => {
   try {
-    const [m, w] = await Promise.all([
+    const [m, w, met] = await Promise.all([
       fetch('/data/lab_models.json').then((r) => r.json()),
       fetch('/data/lab_windows.json').then((r) => r.json()),
+      fetch('/data/metrics.json').then((r) => r.json()),
     ])
     labModels.value = m
     labWindows.value = w
+    metrics.value = met
   } catch {
     loadError.value = true
   } finally {

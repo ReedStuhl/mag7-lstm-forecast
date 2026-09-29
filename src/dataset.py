@@ -11,7 +11,7 @@ import torch
 from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import Dataset
 
-from .model import SHORT_WINDOW, LONG_WINDOW, HORIZON
+from .model import SHORT_WINDOW, MEDIUM_WINDOW, LONG_WINDOW, HORIZON
 
 TRAIN_FRAC = 0.70
 VAL_FRAC = 0.15  # remaining 0.15 is test
@@ -32,14 +32,15 @@ def fit_scalers(features: np.ndarray, closes: np.ndarray, train_end: int) -> Sca
 def build_examples(features_scaled: np.ndarray, closes_scaled: np.ndarray):
     """features_scaled: (N, 2) [close, log_return], both already scaled.
     closes_scaled: (N,) scaled close, used as the prediction target.
-    Returns lists of (x_short, x_long, y, anchor_index)."""
+    Returns lists of (x_short, x_medium, x_long, y, anchor_index)."""
     n = len(features_scaled)
     examples = []
     for i in range(LONG_WINDOW, n - HORIZON + 1):
         x_long = features_scaled[i - LONG_WINDOW:i]
+        x_medium = features_scaled[i - MEDIUM_WINDOW:i]
         x_short = features_scaled[i - SHORT_WINDOW:i]
         y = closes_scaled[i:i + HORIZON]
-        examples.append((x_short, x_long, y, i))
+        examples.append((x_short, x_medium, x_long, y, i))
     return examples
 
 
@@ -49,7 +50,7 @@ def chronological_split(examples, n_rows: int):
 
     train, val, test = [], [], []
     for ex in examples:
-        anchor = ex[3]
+        anchor = ex[4]
         if anchor < train_end:
             train.append(ex)
         elif anchor < val_end:
@@ -67,9 +68,10 @@ class WindowDataset(Dataset):
         return len(self.examples)
 
     def __getitem__(self, idx):
-        x_short, x_long, y, _anchor = self.examples[idx]
+        x_short, x_medium, x_long, y, _anchor = self.examples[idx]
         return (
             torch.tensor(x_short, dtype=torch.float32),
+            torch.tensor(x_medium, dtype=torch.float32),
             torch.tensor(x_long, dtype=torch.float32),
             torch.tensor(y, dtype=torch.float32),
         )
