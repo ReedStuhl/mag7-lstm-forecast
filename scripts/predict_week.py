@@ -1,5 +1,6 @@
 """The actual "run this on Sunday" job: loads each ticker's already-trained
-model, pulls the latest data, and predicts the next 5 trading days.
+model, pulls the latest data, and predicts the next 10 trading days (two
+Mon-Fri weeks).
 
 Meant to be re-run periodically (e.g. a weekly scheduled GitHub Action) -
 it does NOT retrain, only re-runs inference on fresh data against the
@@ -41,11 +42,12 @@ def next_trading_days(start_date, n: int) -> list[str]:
 def most_recent_friday_index(dates) -> int:
     """Index of the most recent Friday at or before the last fetched date.
 
-    Predictions are always anchored to a Friday close so the 5-day output
-    is always a clean upcoming Mon-Fri block - not just "whatever 5 trading
-    days happen to follow the last row fetched," which floats depending on
-    what day this script happens to run (e.g. a Thursday anchor produces
-    Fri, then next Mon-Thu - a real bug this replaces, not a style choice).
+    Predictions are always anchored to a Friday close so the HORIZON-day
+    output is always a clean upcoming block of full Mon-Fri weeks - not
+    just "whatever trading days happen to follow the last row fetched,"
+    which floats depending on what day this script happens to run (e.g. a
+    Thursday anchor produces Fri, then next Mon-Thu - a real bug this
+    replaces, not a style choice).
     """
     for i in range(len(dates) - 1, -1, -1):
         if dates[i].weekday() == 4:  # Friday
@@ -55,10 +57,10 @@ def most_recent_friday_index(dates) -> int:
 
 def infer(model, scalers, features_scaled, anchor_idx: int) -> list[float]:
     """Run the model as if 'now' were the close at anchor_idx, predicting the
-    5 trading days after it. Used both for the live forecast (anchor = most
-    recent Friday) and, retroactively, for what the model would have said
-    the week before (anchor = the Friday before that) - same function
-    either way, just a different anchor."""
+    HORIZON trading days after it. Used both for the live forecast (anchor =
+    most recent Friday) and, retroactively, for what the model would have
+    said one HORIZON-length period before (anchor = HORIZON trading days
+    earlier) - same function either way, just a different anchor."""
     end = anchor_idx + 1  # slice end is exclusive; include the anchor day itself
     x_long = features_scaled[end - LONG_WINDOW:end]
     x_medium = features_scaled[end - MEDIUM_WINDOW:end]
@@ -106,34 +108,38 @@ def predict_ticker(ticker: str) -> dict:
     last_close = float(df["Close"].iloc[friday_idx])
     target_dates = next_trading_days(last_date, HORIZON)
 
-    # The week that just completed (real, known outcomes) - same 5 rows the
-    # model's input window ends on, so the frontend can chart "what actually
-    # happened" leading straight into "what's predicted next" on one
-    # continuous timeline, using data already fetched above (no extra cost).
-    recent_dates = [str(d.date()) for d in df.index[friday_idx - 4:friday_idx + 1]]
-    recent_actual = df["Close"].iloc[friday_idx - 4:friday_idx + 1].tolist()
+    # The HORIZON-day period that just completed (real, known outcomes) -
+    # same rows the model's input window ends on, so the frontend can chart
+    # "what actually happened" leading straight into "what's predicted next"
+    # on one continuous timeline, using data already fetched above (no extra
+    # cost).
+    recent_dates = [str(d.date()) for d in df.index[friday_idx - HORIZON + 1:friday_idx + 1]]
+    recent_actual = df["Close"].iloc[friday_idx - HORIZON + 1:friday_idx + 1].tolist()
 
-    # Naive "no change" baseline for the predicted week, same definition
+    # Naive "no change" baseline for the predicted period, same definition
     # used in the historical backtest (src/evaluate.py) - lets the forecast
-    # chart show the model against that baseline for the *upcoming* week
+    # chart show the model against that baseline for the *upcoming* period
     # too, not just historically.
     naive = [last_close] * HORIZON
     pred = blend(raw_pred, naive, alpha)
 
-    # What the model (and naive baseline) would have said for LAST week,
-    # computed retroactively using the window that existed before it
-    # started - not stored/replayed from a prior run, just re-inferred now
-    # with the same already-trained weights. Lets the chart's "Predicted"
-    # and "Naive" lines run continuously across all 10 days instead of only
-    # covering the forecasted half.
-    prev_friday_idx = most_recent_friday_index(df.index[:friday_idx])
-    if prev_friday_idx + 1 < LONG_WINDOW:
+    # What the model (and naive baseline) would have said for the PRIOR
+    # HORIZON-length period, computed retroactively using the window that
+    # existed before it started - not stored/replayed from a prior run,
+    # just re-inferred now with the same already-trained weights. Lets the
+    # chart's "Predicted" and "Naive" lines run continuously across the
+    # whole chart instead of only covering the forecasted half. The prior
+    # anchor is exactly HORIZON trading days back rather than a second
+    # Friday-search, since HORIZON is a whole number of trading weeks and
+    # this script already treats the calendar as holiday-free.
+    prev_anchor_idx = friday_idx - HORIZON
+    if prev_anchor_idx + 1 < LONG_WINDOW:
         raise ValueError(
-            f"{ticker}: not enough data before the prior Friday to retroactively "
-            f"infer last week's prediction ({prev_friday_idx + 1} rows, need {LONG_WINDOW})"
+            f"{ticker}: not enough data before the prior period to retroactively "
+            f"infer its prediction ({prev_anchor_idx + 1} rows, need {LONG_WINDOW})"
         )
-    raw_recent_predicted = infer(model, scalers, features_scaled, prev_friday_idx)
-    recent_naive = [float(df["Close"].iloc[prev_friday_idx])] * HORIZON
+    raw_recent_predicted = infer(model, scalers, features_scaled, prev_anchor_idx)
+    recent_naive = [float(df["Close"].iloc[prev_anchor_idx])] * HORIZON
     recent_predicted = blend(raw_recent_predicted, recent_naive, alpha)
 
     return {

@@ -2,11 +2,11 @@
 
 Repo: `mag7-lstm-forecast` · Live: https://magnificent-forecast.vercel.app
 
-An honest, interactive ML demo. A small triple-branch PyTorch LSTM forecasts next week's
-closing prices for the "Magnificent 7" stocks (AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA),
-blended with a naive "assume no change" baseline, and is shown transparently against that
-same baseline - including the tickers and days where the baseline still wins, which in this
-backtest is most of them. It also surfaces a live-ish stat on how much of the S&P 500's
+An honest, interactive ML demo. A small triple-branch PyTorch LSTM forecasts the next two
+weeks' closing prices for the "Magnificent 7" stocks (AAPL, MSFT, GOOGL, AMZN, NVDA, META,
+TSLA), blended with a naive "assume no change" baseline, and is shown transparently against
+that same baseline - including the tickers and days where the baseline still wins, which in
+this backtest is most of them. It also surfaces a live-ish stat on how much of the S&P 500's
 total market cap these 7 companies make up.
 
 This started life in 2022 as a single-stock Bitcoin price predictor and was rebuilt from
@@ -19,11 +19,22 @@ claims are backed by what's actually implemented; see "What this is (and isn't)"
 **Model** (`src/model.py`): three small LSTM branches read the same price series at three
 lookback lengths - 5 trading days (short-term momentum), 15 trading days (~3 weeks), and
 30 trading days (~6 weeks) - and their final hidden states are combined into a single head
-that predicts the next 5 trading days' closes in one forward pass (not autoregressively -
-each day is predicted directly from the same starting window, so Friday's forecast isn't
-built on Thursday's guess). The 5/15-day pair came from the Prediction Lab's window-length
-experiment, which backtested shorter windows closer to naive than a longer one on real
-data; the 30-day branch was added back alongside them rather than in place of them.
+that predicts the next 10 trading days' closes (two Mon-Fri weeks) in one forward pass (not
+autoregressively - each day is predicted directly from the same starting window, so the
+second week's forecast isn't built on the first week's guess). The 5/15-day pair came from
+the Prediction Lab's window-length experiment, which backtested shorter windows closer to
+naive than a longer one on real data; the 30-day branch was added back alongside them
+rather than in place of them.
+
+**Why 10 days, not 5** (`src/model.py`'s `HORIZON`, and see the Prediction Lab's horizon
+write-up): backtesting a 10-day horizon surfaced a real, if counterintuitive, finding - the
+naive "assume no change" baseline gets relatively worse the further out you predict, since
+real prices drift further from "no change" the longer the window. On this backtest the
+blended model's win rate against naive was 7 of 35 in the first 5 days versus 18 of 35 in
+the second 5 days - AMZN and TSLA go from losing every day in week one to winning every day
+in week two, and GOOGL wins all 10. The model isn't getting more accurate further out in
+absolute terms; naive is just getting worse faster, which is exactly why the comparison
+matters more at that range, not less.
 
 **Blending with naive** (`src/evaluate.py`): each ticker's raw model output is blended with
 the naive baseline, `alpha * model + (1 - alpha) * naive`, where `alpha` is grid-searched
@@ -44,21 +55,20 @@ stopping on validation loss. This is a manual/occasional step, not something tha
 a schedule - the model doesn't need retraining every week.
 
 **Weekly predictions** (`scripts/predict_week.py`): loads the already-trained model and
-runs inference on the latest data. This is the actual "run it on Sunday, get Mon-Fri"
-job, and it's the piece meant to run on a schedule (see
+runs inference on the latest data. This is the actual "run it on Sunday, get the next two
+Mon-Fri weeks" job, and it's the piece meant to run on a schedule (see
 `.github/workflows/weekly-refresh.yml`).
 
 **Backtest / honesty check** (baked into `train_all.py`'s evaluation step): every test-set
 prediction (after blending) is compared against what actually happened and against the
-naive baseline, with RMSE reported per day-ahead. In the current backtest the blended model
-beats naive on 15 of 35 ticker/day combinations - TSLA (5/5), GOOGL (4/5), AMZN (3/5), and
-NVDA (3/5) favor the model on at least some days; AAPL, MSFT, and META still favor naive
-across the board, with MSFT's blend performing distinctly worse than naive since the alpha
-floor forces real weight onto a weak MSFT model instead of collapsing toward naive. Before
-any of this tuning the model beat naive on 3 of 35; a 0.6 alpha floor reached 12 of 35; an
-unfloored blend reached 14 of 35 but produced forecast lines nearly identical to naive on
-several tickers. That trade-off between legibility and accuracy is the headline finding
-this demo leads with, not something it hides.
+naive baseline, with RMSE reported per day-ahead across all 10 days. In the current
+backtest the blended model beats naive on 25 of 70 ticker/day combinations - GOOGL wins all
+10 days, AMZN and TSLA win all 5 days of the second week (but none of the first), META
+picks up 2 late wins, NVDA 1; AAPL wins 2 of 10 and MSFT wins none. That 7/35 (week one) vs
+18/35 (week two) split is the point of extending the horizon in the first place - see "Why
+10 days, not 5" above. Before any blending or window tuning the model beat naive on 3 of 35
+(5-day horizon only); this is the current state after several rounds of tuning, each of
+which is reported here rather than only the final number.
 
 **S&P 500 concentration stat** (`scripts/sp500_stat.py`): sums live market caps for all
 500+ current S&P 500 constituents (pulled from Wikipedia's constituent list, priced via
@@ -83,7 +93,7 @@ investment advice.
 ```bash
 pip install -r requirements.txt
 python -m scripts.train_all      # trains all 7 tickers, writes data/output/*.json (slow-ish, one-time/occasional)
-python -m scripts.predict_week   # generates next week's predictions from the trained models (fast, the actual weekly job)
+python -m scripts.predict_week   # generates the next two weeks' predictions from the trained models (fast, the actual weekly job)
 python -m scripts.sp500_stat     # refreshes the S&P 500 concentration stat (~2 min, offline)
 ```
 

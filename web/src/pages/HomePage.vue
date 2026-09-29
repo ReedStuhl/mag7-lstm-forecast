@@ -4,9 +4,9 @@
       <h1 class="text-3xl sm:text-4xl font-bold">Magnificent 7 Forecast</h1>
       <p class="mt-3 text-gray-600">
         A small triple-branch LSTM (trained on 5-day, 15-day, and 30-day price windows, then
-        blended with a naive baseline) predicts next week's closing prices for each of the
-        "Magnificent 7" stocks - and is shown honestly against that same naive baseline, not just
-        its own numbers.
+        blended with a naive baseline) predicts the next two weeks' closing prices for each of
+        the "Magnificent 7" stocks - and is shown honestly against that same naive baseline, not
+        just its own numbers.
       </p>
       <router-link
         to="/lab"
