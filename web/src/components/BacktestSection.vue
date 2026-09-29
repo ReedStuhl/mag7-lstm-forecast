@@ -7,7 +7,10 @@
     </p>
     <p class="text-xs text-gray-400 mb-4">
       As of the model's last training run ({{ metrics.trained_at }}) - this doesn't update
-      weekly the way predictions do, only when the model is retrained.
+      weekly the way predictions do, only when the model is retrained. Reported predictions are
+      already blended with the naive baseline (weight {{ metrics.blend_alpha.toFixed(2) }} model,
+      {{ (1 - metrics.blend_alpha).toFixed(2) }} naive, tuned on validation data), not the raw
+      model output alone.
     </p>
 
     <p class="text-sm font-medium mb-2">Average error (RMSE) by day ahead</p>
