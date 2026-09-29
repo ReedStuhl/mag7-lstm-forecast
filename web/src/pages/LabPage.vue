@@ -6,7 +6,7 @@
       >
       <h1 class="text-3xl sm:text-4xl font-bold mt-3">Prediction Lab</h1>
       <p class="mt-3 text-gray-600">
-        A place to mess with these models directly instead of just reading about them - see how
+        A place to mess with these models directly instead of just reading about them: see how
         the algorithm, the window of data, and (fictionally) the news mood all change what comes
         out the other end. NVDA only, for now.
       </p>
@@ -27,7 +27,7 @@
     </main>
 
     <footer class="max-w-3xl mx-auto px-6 pb-10 text-center text-xs text-gray-400 space-y-1">
-      <p>Educational demo only - not financial or investment advice.</p>
+      <p>Educational demo only, not financial or investment advice.</p>
     </footer>
   </div>
 </template>

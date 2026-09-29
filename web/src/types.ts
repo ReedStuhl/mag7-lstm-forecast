@@ -65,6 +65,7 @@ export interface LabModelsFile {
   window_days: number
   n_test_examples: number
   naive_rmse_by_day: number[]
+  trained_at: string
   models: Record<LabModelType, LabModelResult>
 }
 
@@ -77,11 +78,14 @@ export interface LabWindowResult {
   last_close: number
   recent_dates: string[]
   recent_actual: number[]
+  recent_predicted: number[]
+  recent_naive: number[]
   target_dates: string[]
   predicted: number[]
   naive: number[]
   rmse_by_day: number[]
   naive_rmse_by_day: number[]
+  trained_at: string
 }
 
 export type LabWindowsFile = { ticker: Ticker } & Record<LabWindowLabel, LabWindowResult>

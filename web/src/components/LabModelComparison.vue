@@ -1,11 +1,16 @@
 <template>
   <div class="border border-gray-200 rounded-xl p-5">
-    <h3 class="text-lg font-semibold mb-1">Naive vs. Linear vs. KNN vs. RNN vs. LSTM</h3>
-    <p class="text-sm text-gray-500 mb-4">
-      Five different approaches, same {{ data.ticker }} data, same {{ data.window_days }}-day window,
-      same 5-day horizon, same held-out test set ({{ data.n_test_examples }} examples). Only the
-      algorithm changes - this is a real, backtested comparison, not a description of how they
-      differ in theory.
+    <h3 class="text-lg font-semibold mb-1">Five Ways to Guess a Stock Price</h3>
+    <p class="text-sm text-gray-500 mb-1">
+      Naive, Linear Regression, K Nearest Neighbors, Recurrent Neural Network (RNN), and Long
+      Short-Term Memory (LSTM): five different approaches, same {{ data.ticker }} data, a window of
+      {{ data.window_days }} days, a horizon of 5 days, and the same held out test set (
+      {{ data.n_test_examples }} examples). Only the algorithm changes, so this is a real,
+      backtested comparison, not a description of how they differ in theory.
+    </p>
+    <p class="text-xs text-gray-400 mb-4">
+      As of the last training run ({{ data.trained_at }}). This is a backtest, so it doesn't update
+      weekly the way live forecasts do; it only changes when these models are retrained.
     </p>
 
     <div class="flex flex-wrap gap-2 mb-5" role="tablist" aria-label="Choose a model type">
@@ -38,7 +43,7 @@
     </p>
 
     <p class="text-sm font-medium mt-6 mb-2">
-      One test-set example: actual vs. what {{ labels[selected] }} predicted
+      One example from the held out set: actual versus what {{ labels[selected] }} predicted
     </p>
     <LineChart
       :series="[
@@ -47,7 +52,7 @@
         { name: 'Naive baseline', values: current.example.naive, color: '#9ca3af', dashed: true },
       ]"
       :labels="['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5']"
-      :aria-label="`Actual, ${labels[selected]}, and naive-baseline prices for one test example`"
+      :aria-label="`Actual, ${labels[selected]}, and naive baseline prices for one held out example`"
     />
   </div>
 </template>
@@ -62,9 +67,9 @@ const props = defineProps<{ data: LabModelsFile }>()
 const labels: Record<LabModelType, string> = {
   naive: 'Naive',
   linear: 'Linear Regression',
-  knn: 'KNN',
-  rnn: 'RNN',
-  lstm: 'LSTM',
+  knn: 'K Nearest Neighbors',
+  rnn: 'Recurrent Neural Network',
+  lstm: 'Long Short-Term Memory',
 }
 
 const selected = ref<LabModelType>('lstm')
