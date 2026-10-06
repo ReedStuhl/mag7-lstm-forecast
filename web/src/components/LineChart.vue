@@ -127,15 +127,13 @@ const MAX_VISIBLE_LABELS = 10
 
 const showMarkers = computed(() => props.labels.length <= DENSE_THRESHOLD)
 
-// Evenly spaced across the full width, including both endpoints - not a
-// fixed step with the last label tacked on afterward, which left an
-// uneven (often much narrower) final gap whenever n-1 wasn't a multiple
-// of the step, crowding the last one or two labels together.
 const visibleLabelIndexes = computed(() => {
   const n = props.labels.length
   if (n <= MAX_VISIBLE_LABELS) return Array.from({ length: n }, (_, i) => i)
-  return Array.from({ length: MAX_VISIBLE_LABELS }, (_, i) =>
-    Math.round((i * (n - 1)) / (MAX_VISIBLE_LABELS - 1)),
-  )
+  const step = Math.ceil(n / MAX_VISIBLE_LABELS)
+  const indexes = []
+  for (let i = 0; i < n; i += step) indexes.push(i)
+  if (indexes[indexes.length - 1] !== n - 1) indexes.push(n - 1)
+  return indexes
 })
 </script>

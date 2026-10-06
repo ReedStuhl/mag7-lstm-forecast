@@ -8,20 +8,18 @@ from .train import device
 
 
 def evaluate_test_set(model, test_examples, scalers, raw_closes):
-    """test_examples: list of (x_short, x_medium, x_long, y_scaled,
-    anchor_index) from dataset.build_examples. raw_closes: unscaled close
-    price array (same index space as the anchors) - used for the naive
-    baseline and to report real dollar predictions/actuals instead of
-    scaled [0,1] values."""
+    """test_examples: list of (x_short, x_long, y_scaled, anchor_index) from
+    dataset.build_examples. raw_closes: unscaled close price array (same
+    index space as the anchors) - used for the naive baseline and to report
+    real dollar predictions/actuals instead of scaled [0,1] values."""
     model.eval()
 
     rows = []
     with torch.no_grad():
-        for x_short, x_medium, x_long, y_scaled, anchor in test_examples:
+        for x_short, x_long, y_scaled, anchor in test_examples:
             xs = torch.tensor(x_short, dtype=torch.float32).unsqueeze(0).to(device)
-            xm = torch.tensor(x_medium, dtype=torch.float32).unsqueeze(0).to(device)
             xl = torch.tensor(x_long, dtype=torch.float32).unsqueeze(0).to(device)
-            pred_scaled = model(xs, xm, xl).cpu().numpy()[0]
+            pred_scaled = model(xs, xl).cpu().numpy()[0]
 
             pred = scalers.target.inverse_transform(pred_scaled.reshape(-1, 1)).ravel()
             actual = scalers.target.inverse_transform(y_scaled.reshape(-1, 1)).ravel()
@@ -51,39 +49,25 @@ def evaluate_test_set(model, test_examples, scalers, raw_closes):
     }
 
 
-# Minimum blend weight given to the model's own output. With no floor,
-# alpha=0 (pure naive) is always available to the grid search and gets
-# picked for tickers where the model is genuinely weak - which minimizes
-# RMSE but produces a forecast line that's visually indistinguishable from
-# naive, which defeats the point of showing a model prediction at all. This
-# floor is a deliberate trade: it can make the reported RMSE worse than an
-# unfloored blend (or worse than naive outright) on tickers where the model
-# is weak, in exchange for the forecast always reflecting real model output.
-# That trade-off is disclosed in the UI, not hidden.
-ALPHA_FLOOR = 0.75
-
-
-def find_best_alpha(rows: list[dict], floor: float = ALPHA_FLOOR) -> float:
-    """Grid-searches a single blend weight alpha in [floor, 1] such that
+def find_best_alpha(rows: list[dict]) -> float:
+    """Grid-searches a single blend weight alpha in [0, 1] such that
     blended = alpha * model_prediction + (1 - alpha) * naive_prediction
     minimizes RMSE across all days combined, on the given rows.
 
-    Call this on VALIDATION rows only, never on test rows. Below floor=0,
-    alpha=0 (pure naive) would always be in the grid, guaranteeing the
-    blend never loses to naive on the data it's tuned against - with
-    floor > 0 that guarantee no longer holds, by design (see ALPHA_FLOOR).
-    Whether the chosen alpha holds up on genuinely held-out data is exactly
-    what the test-set evaluation is for. One alpha per ticker rather than
-    one per horizon day, since a validation set of a few dozen examples is
-    too little to trust 5 separately-tuned weights without just fitting
-    validation noise.
+    Call this on VALIDATION rows only, never on test rows - alpha=0 (pure
+    naive) is always in the grid, so the chosen alpha can never do worse
+    than naive on the data it's tuned against; whether that holds on
+    genuinely held-out data is exactly what the test-set evaluation is for.
+    One alpha per ticker rather than one per horizon day, since a
+    validation set of a few dozen examples is too little to trust 5
+    separately-tuned weights without just fitting validation noise.
     """
     predicted = np.array([r["predicted"] for r in rows])
     naive = np.array([r["naive"] for r in rows])
     actual = np.array([r["actual"] for r in rows])
 
-    best_alpha, best_rmse = floor, float("inf")
-    for alpha in np.linspace(floor, 1.0, 21):
+    best_alpha, best_rmse = 0.0, float("inf")
+    for alpha in np.linspace(0.0, 1.0, 21):
         blended = alpha * predicted + (1 - alpha) * naive
         rmse = float(np.sqrt(np.mean((blended - actual) ** 2)))
         if rmse < best_rmse:
