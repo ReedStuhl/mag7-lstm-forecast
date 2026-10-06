@@ -27,6 +27,16 @@ ROOT = Path(__file__).resolve().parents[1]
 MODELS_DIR = ROOT / "models"
 OUTPUT_DIR = ROOT / "data" / "output"
 
+# How much just-completed history (and retroactive accuracy) the homepage
+# chart shows, independent of HORIZON (10). Deliberately shorter than the
+# forecast itself: showing a full HORIZON-length lookback alongside a
+# HORIZON-length forecast makes the compact homepage card denser than it
+# needs to be, when the "does a longer horizon help" story already lives in
+# the Prediction Lab's dedicated write-up (real backtest data, not this
+# live/retroactive comparison). The forecast itself still covers all of
+# HORIZON - only how much *history* gets charted alongside it shrinks.
+RECENT_DAYS = 5
+
 # Trading days only - skip weekends. Good enough for a demo; doesn't
 # account for market holidays, which is a known, acceptable simplification.
 def next_trading_days(start_date, n: int) -> list[str]:
@@ -108,13 +118,12 @@ def predict_ticker(ticker: str) -> dict:
     last_close = float(df["Close"].iloc[friday_idx])
     target_dates = next_trading_days(last_date, HORIZON)
 
-    # The HORIZON-day period that just completed (real, known outcomes) -
-    # same rows the model's input window ends on, so the frontend can chart
-    # "what actually happened" leading straight into "what's predicted next"
-    # on one continuous timeline, using data already fetched above (no extra
-    # cost).
-    recent_dates = [str(d.date()) for d in df.index[friday_idx - HORIZON + 1:friday_idx + 1]]
-    recent_actual = df["Close"].iloc[friday_idx - HORIZON + 1:friday_idx + 1].tolist()
+    # The RECENT_DAYS period that just completed (real, known outcomes), so
+    # the frontend can chart "what actually happened" leading straight into
+    # "what's predicted next" on one continuous timeline, using data already
+    # fetched above (no extra cost).
+    recent_dates = [str(d.date()) for d in df.index[friday_idx - RECENT_DAYS + 1:friday_idx + 1]]
+    recent_actual = df["Close"].iloc[friday_idx - RECENT_DAYS + 1:friday_idx + 1].tolist()
 
     # Naive "no change" baseline for the predicted period, same definition
     # used in the historical backtest (src/evaluate.py) - lets the forecast
@@ -124,22 +133,22 @@ def predict_ticker(ticker: str) -> dict:
     pred = blend(raw_pred, naive, alpha)
 
     # What the model (and naive baseline) would have said for the PRIOR
-    # HORIZON-length period, computed retroactively using the window that
+    # RECENT_DAYS period, computed retroactively using the window that
     # existed before it started - not stored/replayed from a prior run,
     # just re-inferred now with the same already-trained weights. Lets the
     # chart's "Predicted" and "Naive" lines run continuously across the
-    # whole chart instead of only covering the forecasted half. The prior
-    # anchor is exactly HORIZON trading days back rather than a second
-    # Friday-search, since HORIZON is a whole number of trading weeks and
-    # this script already treats the calendar as holiday-free.
-    prev_anchor_idx = friday_idx - HORIZON
+    # whole chart instead of only covering the forecasted half. infer()
+    # always predicts a full HORIZON ahead, so this only keeps the first
+    # RECENT_DAYS of that forecast - the portion that's actually happened
+    # since and can be scored against real outcomes.
+    prev_anchor_idx = friday_idx - RECENT_DAYS
     if prev_anchor_idx + 1 < LONG_WINDOW:
         raise ValueError(
             f"{ticker}: not enough data before the prior period to retroactively "
             f"infer its prediction ({prev_anchor_idx + 1} rows, need {LONG_WINDOW})"
         )
-    raw_recent_predicted = infer(model, scalers, features_scaled, prev_anchor_idx)
-    recent_naive = [float(df["Close"].iloc[prev_anchor_idx])] * HORIZON
+    raw_recent_predicted = infer(model, scalers, features_scaled, prev_anchor_idx)[:RECENT_DAYS]
+    recent_naive = [float(df["Close"].iloc[prev_anchor_idx])] * RECENT_DAYS
     recent_predicted = blend(raw_recent_predicted, recent_naive, alpha)
 
     return {
