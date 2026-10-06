@@ -6,7 +6,7 @@ HORIZON = 5
 
 class SimpleSeqModel(nn.Module):
     """Single-branch RNN or LSTM reading one window length, predicting HORIZON
-    days directly. Deliberately simpler than the site's main TripleBranchLSTM
+    days directly. Deliberately simpler than the site's main DualBranchLSTM
     (model.py) - this exists purely to compare algorithms fairly, one window
     length at a time, for the Prediction Lab's "LSTM vs RNN" question."""
 

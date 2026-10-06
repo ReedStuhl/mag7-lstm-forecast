@@ -1,10 +1,9 @@
 """Single-window dataset helpers for the Prediction Lab (src/lab_model.py,
 scripts/train_lab_models.py, scripts/train_lab_windows.py) - separate from
-src/dataset.py, which builds the site's main triple-branch (5-day, 15-day,
-and 30-day) windows. The Lab needs one consistent window length at a time
-so different algorithms can be compared fairly, and different window
-lengths compared against each other, so it can't reuse the multi-branch
-shape directly.
+src/dataset.py, which builds the site's main dual-branch (5-day + 15-day)
+windows. The Lab needs one consistent window length at a time so different
+algorithms can be compared fairly, and different window lengths compared
+against each other, so it can't reuse the dual-branch shape directly.
 """
 from dataclasses import dataclass
 
