@@ -199,9 +199,13 @@ def range_metrics(sigma, f):
     }
 
 
-def main():
+def run_experiment(verbose=True):
+    """Fetches fresh data and runs every direction model and range method
+    walk-forward. Returns the feature frame, per-week outputs and summary
+    metrics; scripts/build_site.py reuses this for the weekly refresh."""
     f = build_features(fetch_weekly())
-    print(f"{len(f)} weekly rows, {f.index[0].date()} to {f.index[-1].date()}")
+    if verbose:
+        print(f"{len(f)} weekly rows, {f.index[0].date()} to {f.index[-1].date()}")
 
     preds, direction = {}, {}
     for name, model in MODELS.items():
@@ -211,23 +215,36 @@ def main():
         for label, lo, hi in [("2005-2015", "2005", "2015-12-31"), ("2016-now", "2016", "2100")]:
             halves[label] = direction_metrics(preds[name].loc[lo:hi], f)["accuracy"]
         direction[name]["accuracy_by_period"] = halves
-        print(name, direction[name])
+        if verbose:
+            print(name, direction[name])
 
     sigmas = range_methods(f)
     ranges = {k: range_metrics(s, f) for k, s in sigmas.items()}
-    for k, v in ranges.items():
-        print("range", k, v)
+    if verbose:
+        for k, v in ranges.items():
+            print("range", k, v)
 
+    return {
+        "features": f,
+        "predictions": pd.DataFrame(preds),
+        "sigmas": pd.DataFrame(sigmas),
+        "summary": {
+            "test_start": TEST_START,
+            "last_week": str(f.index[-1].date()),
+            "direction": direction,
+            "range": ranges,
+        },
+    }
+
+
+def main():
+    result = run_experiment()
+    f = result["features"]
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({
-        "test_start": TEST_START,
-        "last_week": str(f.index[-1].date()),
-        "direction": direction,
-        "range": ranges,
-    }, indent=2))
-    weekly = pd.DataFrame(preds)
-    weekly["vix_scaled_sigma"] = sigmas["vix_scaled"]
-    weekly.join(f[["close", "vix"]], how="right").loc["1994":].to_csv(OUT.with_name("spy_experiment_predictions.csv"))
+    OUT.write_text(json.dumps(result["summary"], indent=2))
+    weekly = result["predictions"].copy()
+    weekly["vix_scaled_sigma"] = result["sigmas"]["vix_scaled"]
+    weekly.join(f[["close", "vix"]], how="right").to_csv(OUT.with_name("spy_experiment_predictions.csv"))
     print(f"wrote {OUT}")
 
 

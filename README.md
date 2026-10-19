@@ -1,87 +1,88 @@
-# Magnificent 7 Forecast
+# SPY Prediction Lab
 
 Repo: `mag7-lstm-forecast` · Live: https://magnificent-forecast.vercel.app
 
-An honest, interactive ML demo. A small dual-branch PyTorch LSTM forecasts next week's
-closing prices for the "Magnificent 7" stocks (AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA),
-blended with a naive "assume no change" baseline, and is shown transparently against that
-same baseline - including the tickers and days where the baseline still wins, which in this
-backtest is most of them. It also surfaces a live-ish stat on how much of the S&P 500's
-total market cap these 7 companies make up.
+A weekly SPY forecast that shows its work. Every weekend it publishes a likely range for
+Friday's close, grades last week's range against what happened, and keeps a public record
+that never gets rewritten. It also lets you replay past crashes week by week, and reports
+an experiment where four models, including an LSTM, try and fail to beat "always up" at
+calling next week's direction.
 
-This started life in 2022 as a single-stock Bitcoin price predictor and was rebuilt from
-the ground up rather than just given a UI - the original version's README advertised
-real-time data and RMSE evaluation that didn't actually exist in the code. This version's
-claims are backed by what's actually implemented; see "What this is (and isn't)" below.
+This repo used to be a Magnificent 7 forecast (and before that, a 2022 Bitcoin LSTM). That
+version's weekly forecasts were nearly the same shape every week, because the model had
+learned one fixed 5-day pattern and pinned it to the last close. This rebuild narrows to one
+instrument with 30+ years of data and predicts things that can actually be checked.
 
-## How it works
+## What the site shows
 
-**Model** (`src/model.py`): two small LSTM branches read the same price series at two
-lookback lengths - 5 trading days (short-term momentum) and 15 trading days (~3 weeks)
-- and their final hidden states are combined into a single head that predicts the
-next 5 trading days' closes in one forward pass (not autoregressively - each day is
-predicted directly from the same starting window, so Friday's forecast isn't built on
-Thursday's guess). These windows were shrunk down from an earlier 10/30-day version based
-on the Prediction Lab's window-length experiment, which backtested shorter windows closer
-to naive than longer ones on real data.
+**This week's range.** A 68% likely range for Friday's close, from VIX: the options
+market's own estimate of near-term volatility. VIX usually overstates how much the market
+actually moves, so it's scaled down each January to the size that would have caught 68% of
+earlier weeks. The range widens when VIX jumps and narrows when it's calm.
 
-**Blending with naive** (`src/evaluate.py`): each ticker's raw model output is blended with
-the naive baseline, `alpha * model + (1 - alpha) * naive`, where `alpha` is grid-searched
-per ticker on validation data only (never on the test set the backtest reports) to minimize
-RMSE. This is a hedge, not a trick - since `alpha = 0` (pure naive) is always in the search
-grid, the chosen blend can never do worse than naive on the data it was tuned against;
-whether that holds up on genuinely held-out test data is exactly what the backtest below
-checks, honestly, ticker by ticker.
+**Direction lean.** Up or down with a probability, from a boosted-trees model. It's shown
+small on purpose: see the experiment below.
 
-**Training** (`scripts/train_all.py`): ~1 year of daily data per ticker via `yfinance`,
-chronological 70/15/15 train/val/test split (scalers fit on train only, no leakage), early
-stopping on validation loss. This is a manual/occasional step, not something that runs on
-a schedule - the model doesn't need retraining every week.
+**Scorecard.** Every call is graded on two things: did Friday's close land in the range, and
+did SPY move the way the lean said. The lean is always graded next to "always up", because
+SPY rises in most weeks and raw accuracy flatters any model that leans up.
 
-**Weekly predictions** (`scripts/predict_week.py`): loads the already-trained model and
-runs inference on the latest data. This is the actual "run it on Sunday, get Mon-Fri"
-job, and it's the piece meant to run on a schedule (see
-`.github/workflows/weekly-refresh.yml`).
+**Replay.** Pick a period (2008, 2011, 2018 Q4, 2020, 2022, or the last 6 months) and step
+through it one week at a time, seeing only what was known that Friday.
 
-**Backtest / honesty check** (baked into `train_all.py`'s evaluation step): every test-set
-prediction (after blending) is compared against what actually happened and against the
-naive baseline, with RMSE reported per day-ahead. In the current backtest the blended model
-beats naive on 18 of 35 ticker/day combinations - GOOGL and TSLA win all 5 days, NVDA wins
-4, AMZN wins 3, MSFT wins 1, AAPL and META win none - up from 3 of 35 before this round of
-tuning, but naive still wins more often than not overall. That mixed, per-ticker result is
-the headline finding this demo leads with, not something it hides. (This number moves
-somewhat between retrains - it's a fresh training run on current data each time, not a
-fixed historical claim.)
+## The experiment (`scripts/spy_experiment.py`)
 
-**S&P 500 concentration stat** (`scripts/sp500_stat.py`): sums live market caps for all
-500+ current S&P 500 constituents (pulled from Wikipedia's constituent list, priced via
-`yfinance`) rather than relying on a hardcoded figure that would silently go stale.
+Weekly SPY since 1994, plus VIX and 10-year and 3-month Treasury yields (`src/spy_data.py`).
+Every model is retrained each January on all data before that year, then tested on each week
+of that year, from 2005 to now. Nothing is tuned on the test weeks.
 
-**Frontend** (`web/`): Vue 3 + Vite + TypeScript + Tailwind, statically hosted. It reads
-the JSON files the scripts above produce - there's no backend, no live model inference in
-the browser, and no server to keep running. The only genuinely live piece is a small
-current-price ticker via Finnhub's free tier (optional - the component simply doesn't
-render if `VITE_FINNHUB_API_KEY` isn't set).
+Direction models: always up (baseline), logistic regression on price features, logistic
+regression with VIX and rates added, boosted trees, and a small LSTM over the last 26 weeks.
+None of them beat "always up". Their "down" calls were right less than half the time, and
+their probabilities scored no better than quoting the historical up-rate (Brier skill at or
+below zero). The site reruns this every week and its summary text follows the numbers, so if
+a model ever does pull ahead, the page will say so.
 
-## What this is (and isn't)
+Range methods compared: trailing 52-week volatility, recent-weighted volatility, raw VIX, and
+VIX scaled each January. Scaled VIX is the tightest range that still lands near 68%. No method
+catches the biggest weekly moves.
 
-This is an educational demo of an honest ML evaluation process, not a trading signal. The
-model does not reliably beat a naive baseline across all 7 tickers in the current backtest
-- it does on some (GOOGL, TSLA, NVDA, partially AMZN/MSFT), it doesn't on others (AAPL,
-META) - and that's reported front and center in the UI rather than buried. Nothing here is
-investment advice.
+## The ledger (`data/ledger.json`)
+
+The scorecard grades what the site actually said, not a recomputed history. `scripts/build_site.py`
+appends each week's call to the ledger and never edits earlier ones. Calls before the launch
+week are the walk-forward backtest (marked `backtest`); from launch on they're `live`, and a
+week the job missed and filled in later is marked `backfilled`.
+
+The ledger stores the model's outputs (direction probability and range width as a log-return
+sigma) rather than dollar prices, because Yahoo's dividend-adjusted closes shift slightly
+over time. The site rebuilds each range from the current adjusted close, so grading stays
+consistent.
+
+## Weekly refresh
+
+`.github/workflows/weekly-refresh.yml` runs `python -m scripts.build_site` every Sunday,
+commits `data/ledger.json` and `web/public/data/lab.json`, and Vercel redeploys from main.
+The whole run takes under a minute.
+
+## Frontend (`web/`)
+
+Vue 3 + Vite + TypeScript, statically hosted, no backend. It reads one file,
+`web/public/data/lab.json`.
 
 ## Running it yourself
 
 ```bash
 pip install -r requirements.txt
-python -m scripts.train_all      # trains all 7 tickers, writes data/output/*.json (slow-ish, one-time/occasional)
-python -m scripts.predict_week   # generates next week's predictions from the trained models (fast, the actual weekly job)
-python -m scripts.sp500_stat     # refreshes the S&P 500 concentration stat (~2 min, offline)
+python -m scripts.spy_experiment   # full experiment, prints every metric, writes data/output/
+python -m scripts.build_site       # this week's call + site data
 ```
 
 ```bash
 cd web
 npm install
-npm run dev   # http://localhost:5173
+npm run dev        # http://localhost:5173
+npm run typecheck
 ```
+
+Educational project, not financial or investment advice.
