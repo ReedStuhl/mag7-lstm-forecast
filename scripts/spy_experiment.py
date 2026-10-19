@@ -119,14 +119,15 @@ MODELS = {
 def walk_forward(f, model):
     labeled = f.dropna(subset=["next_up"])
     out = []
-    for year in sorted(set(labeled.index[labeled.index >= TEST_START].year)):
+    for year in sorted(set(f.index[f.index >= TEST_START].year)):
         train = labeled[labeled.index < f"{year}-01-01"]
-        test = labeled[labeled.index.year == year]
+        test = f[(f.index.year == year)]  # includes the latest, not-yet-graded week
         out.append(pd.Series(model(train, test, f), index=test.index))
     return pd.concat(out)
 
 
 def direction_metrics(p, f):
+    p = p[f.loc[p.index, "next_up"].notna()]
     y = f.loc[p.index, "next_up"].values
     call = (p.values >= 0.5)
     hit = call == y.astype(bool)
@@ -157,12 +158,28 @@ def direction_metrics(p, f):
 
 # ---------- range methods: sigma of next week's log return ----------
 
+def vix_scaled(f, target=0.68):
+    """VIX-implied sigma, shrunk so a +/-1 sigma band caught `target` of past
+    weeks. The scale is refit each January on all earlier weeks only - VIX
+    usually overstates realized moves, and this corrects for that without
+    looking at the year being predicted."""
+    raw = f["vix"] / np.sqrt(52)
+    labeled = f.dropna(subset=["next_ret"])
+    ratio = labeled["next_ret"].abs() / raw.loc[labeled.index]
+    scale = pd.Series(np.nan, index=f.index)
+    for year in sorted(set(f.index[f.index >= TEST_START].year)):
+        k = float(np.quantile(ratio[ratio.index < f"{year}-01-01"], target))
+        scale[f.index.year == year] = k
+    return raw * scale
+
+
 def range_methods(f):
     r = f["r1"]
     return {
         "trailing_52w": r.rolling(52).std(),
         "ewma": np.sqrt((r ** 2).ewm(alpha=0.06).mean()),
         "vix_implied": f["vix"] / np.sqrt(52),
+        "vix_scaled": vix_scaled(f),
     }
 
 
@@ -196,7 +213,8 @@ def main():
         direction[name]["accuracy_by_period"] = halves
         print(name, direction[name])
 
-    ranges = {k: range_metrics(s, f) for k, s in range_methods(f).items()}
+    sigmas = range_methods(f)
+    ranges = {k: range_metrics(s, f) for k, s in sigmas.items()}
     for k, v in ranges.items():
         print("range", k, v)
 
@@ -207,7 +225,9 @@ def main():
         "direction": direction,
         "range": ranges,
     }, indent=2))
-    pd.DataFrame(preds).to_csv(OUT.with_name("spy_experiment_predictions.csv"))
+    weekly = pd.DataFrame(preds)
+    weekly["vix_scaled_sigma"] = sigmas["vix_scaled"]
+    weekly.join(f[["close", "vix"]], how="right").loc["1994":].to_csv(OUT.with_name("spy_experiment_predictions.csv"))
     print(f"wrote {OUT}")
 
 
