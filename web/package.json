@@ -1,23 +1,21 @@
 {
-  "name": "mag7-forecast-web",
+  "name": "spy-prediction-lab-web",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "vue": "^3.5.43",
-    "vue-router": "^5.3.1"
+    "vue": "^3.5.43"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.9",
-    "autoprefixer": "^10.6.1",
-    "postcss": "^8.5.28",
-    "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "vue-tsc": "^3.1.0"
   }
 }

@@ -7,3 +7,6 @@ __pycache__/
 # frontend
 web/node_modules/
 web/dist/
+
+# experiment scratch output (the site reads data/ledger.json and web/public/data/lab.json)
+data/output/
